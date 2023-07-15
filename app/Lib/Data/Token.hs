@@ -4,9 +4,12 @@ data Symbol
   = SIdentifier
   | SEqual
   | SEqualEqual
+  | SFalse
+  | STrue
   | SPlus
   | SMinus
   | SStar
+  | SSlashEqual
   | SSlash
   | SBar
   | SLeftParen
@@ -21,10 +24,15 @@ data Symbol
   | SDiamond
   | SLeft
   | SRight
+  | SLeftEqual
+  | SRightEqual
+  | SAndAnd
+  | SBarBar
   | SInt
   | SFloat
   | SString
   deriving (Show, Eq, Enum)
+
 
 data Element
   = EInt Int
@@ -32,6 +40,7 @@ data Element
   | EFloat Float
   | EBool Bool
   | EVoid
+  | EError String
   deriving (Show, Eq)
 
 data Token = Token

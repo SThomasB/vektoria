@@ -33,5 +33,6 @@ executable vektoria
                 , Lib.Data.Token
                 , Lib.Parser.Parser
     build-depends:    base ^>=4.16.4.0
+                    , text
     hs-source-dirs:   app
     default-language: Haskell2010
