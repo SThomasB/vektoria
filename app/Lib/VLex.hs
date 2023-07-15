@@ -76,7 +76,7 @@ evalExpression (Binary Equals (ElemExpr (EFloat left)) (ElemExpr (EFloat right))
 evalExpression (Binary Equals (ElemExpr (EString left)) (ElemExpr (EString right))) = EBool (left == right)
 evalExpression (Binary Equals (ElemExpr (EBool left)) (ElemExpr (EBool right))) = EBool (left == right)
 -- NotEquals
-evalExpression (Binary NotEquals (ElemExpr left) (ElemExpr right)) = evalOpposite NotEquals Equals (ElemExpr left) (ElemExpr left)
+evalExpression (Binary NotEquals (ElemExpr left) (ElemExpr right)) = evalOpposite NotEquals Equals (ElemExpr left) (ElemExpr right)
 
 -- Greater
 evalExpression (Binary Greater (ElemExpr (EInt left)) (ElemExpr (EInt right))) = EBool (left > right)
