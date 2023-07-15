@@ -15,8 +15,11 @@ repl lnr = do
     let tokens = fst (head result)
     print (map symbol tokens)
     let ast = (run vektoriaParse) tokens
-    print ast
-    let v = evalExpression $ head (fst (head ast))
+
+    let v = case ast of
+            [(parsed, [])] -> (evalExpression $ head parsed)
+            [(parsed, notParsed)] -> EError ("Syntax Error, could not parse: "++ (show notParsed))
+            _ -> EError ("Error")
     print v
     putStrLn ""
     repl (lnr+1)

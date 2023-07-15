@@ -7,6 +7,7 @@ data Symbol
   | SPlus
   | SMinus
   | SStar
+  | SSlashEqual
   | SSlash
   | SBar
   | SLeftParen
@@ -21,6 +22,10 @@ data Symbol
   | SDiamond
   | SLeft
   | SRight
+  | SLeftEqual
+  | SRightEqual
+  | SAndAnd
+  | SBarBar
   | SInt
   | SFloat
   | SString
@@ -32,6 +37,7 @@ data Element
   | EFloat Float
   | EBool Bool
   | EVoid
+  | EError String
   deriving (Show, Eq)
 
 data Token = Token
