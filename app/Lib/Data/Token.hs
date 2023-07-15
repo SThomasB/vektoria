@@ -4,6 +4,8 @@ data Symbol
   = SIdentifier
   | SEqual
   | SEqualEqual
+  | SFalse
+  | STrue
   | SPlus
   | SMinus
   | SStar
@@ -30,6 +32,7 @@ data Symbol
   | SFloat
   | SString
   deriving (Show, Eq, Enum)
+
 
 data Element
   = EInt Int
