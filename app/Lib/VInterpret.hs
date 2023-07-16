@@ -12,7 +12,7 @@ initState :: VState
 initState = HashMap.empty
 
 interpretAssign :: VState -> Statement -> VState
-interpretAssign state (Assign e) = HashMap.insert (name e) e state
+interpretAssign state (Assign e) = HashMap.insert (name e) Entity {name=(name e), thing=(dereference state (thing e))} state
 
 from :: String -> VState -> Expression
 a `from` s = case HashMap.lookup a s of
@@ -38,6 +38,7 @@ dereference :: VState -> Expression -> Expression
 dereference state (Ref r) = r `from` state
 dereference state (Binary op left right) = (Binary op (dereference state left) (dereference state right))
 dereference _ e = e
+
 
 -- Evaluate expressions
 evalExpr :: Expression -> Element

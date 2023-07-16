@@ -1,4 +1,13 @@
 a = "hello"
 b = "world"
 Print a+" "+b
+y = 10
+z = 33
+x = (y+z)/z
+x2 = x+z+y
+x3 = ((x+z+y)/(x2)) * 10
+p = x2>x3
+Print p
+Print x2
+Print x3
 
