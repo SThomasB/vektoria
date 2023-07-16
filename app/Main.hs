@@ -10,26 +10,40 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-      [] -> do
-        putStrLn "Explore vektoria:"
-        repl initState 0
-      [arg] -> do
-        content <- readFile (head args)
-        let tokens = zipWith ($) (map (run . vektoriaLex) [1..]) (lines content)
-        error <- mapM check tokens
-        let ast = map (run vektoriaParse) (map getToken tokens)
-        mapM_ (\t->do putStrLn "" ; putStrLn $ show t) ast
-        interpret initState (map getStatement ast)
-        print "-vektoria-"
-      _ -> putStrLn "what?"
+      [] -> repl initState 0
+      [filePath] -> do interpretFile filePath
+      _ -> putStrLn "Invalid arguments."
 
-getToken :: [([Token], String)] -> [Token]
-getToken [] = []
-getToken [(t, _)] = t
 
-getStatement :: [([Statement], [Token])] -> [Statement]
-getStatement [] = []
-getStatement [(statement, _)] = statement
+
+interpretFile :: String -> IO ()
+interpretFile filePath = do
+  content <- readFile filePath
+  let lexedLines = zipWith runLex [1..] (lines content)
+  isValid <- allM check lexedLines
+  if isValid
+    then do
+      let ast = map (runParse . getTokens) lexedLines
+      _ <- interpret initState (map getStatements ast)
+      putStrLn ""
+    else putStrLn "Syntax error."
+
+
+allM :: Monad m => (a -> m Bool) -> [a] -> m Bool
+allM p = foldM (\acc x -> if acc then p x else return False) True
+
+runLex :: Int -> String -> [([Token], String)]
+runLex lineNr line = (run . vektoriaLex) lineNr line
+
+runParse :: [Token] -> [([Statement], [Token])]
+runParse = run vektoriaParse
+
+printAst :: [([Statement], [Token])] -> IO ()
+printAst ast = putStrLn "" >> mapM_ (putStrLn . show) ast
+
+getTokens, getStatements :: [([a], b)] -> [a]
+getTokens = concatMap fst
+getStatements = concatMap fst
 
 
 interpret :: VState -> [[Statement]] ->IO VState
