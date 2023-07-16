@@ -1,5 +1,5 @@
 module Lib.VInterpret
-  ( evalExpression
+  ( evalExpr
   ) where
 
 import qualified Data.Text as T
@@ -15,78 +15,78 @@ evalError op e1 e2 =
 
 evalOpposite :: Operator -> Operator -> Expression -> Expression -> Element
 evalOpposite op opposite (ElemExpr left) (ElemExpr right) =
-  case (evalExpression (Binary opposite (ElemExpr left) (ElemExpr right))) of
+  case (evalExpr (Binary opposite (ElemExpr left) (ElemExpr right))) of
     (EBool b) -> EBool (not b)
     _ -> (evalError op left right)
 
 -- Evaluate expressions
-evalExpression :: Expression -> Element
-evalExpression (ElemExpr expr) = expr
+evalExpr :: Expression -> Element
+evalExpr (ElemExpr expr) = expr
 -- comparisons
 -- And
-evalExpression (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
+evalExpr (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
   EBool (left && right)
-evalExpression (Binary Or (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
+evalExpr (Binary Or (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
   EBool (left || right)
 -- Equals
-evalExpression (Binary Equals (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary Equals (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EBool (left == right)
-evalExpression (Binary Equals (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evalExpr (Binary Equals (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   EBool (left == right)
-evalExpression (Binary Equals (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evalExpr (Binary Equals (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EBool (left == right)
-evalExpression (Binary Equals (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
+evalExpr (Binary Equals (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
   EBool (left == right)
 -- NotEquals
-evalExpression (Binary NotEquals (ElemExpr left) (ElemExpr right)) =
+evalExpr (Binary NotEquals (ElemExpr left) (ElemExpr right)) =
   evalOpposite NotEquals Equals (ElemExpr left) (ElemExpr right)
 -- Greater
-evalExpression (Binary Greater (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary Greater (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EBool (left > right)
-evalExpression (Binary Greater (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evalExpr (Binary Greater (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   EBool (left > right)
-evalExpression (Binary Greater (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evalExpr (Binary Greater (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EBool (left /= right && (isSubstring right left))
 -- Less
-evalExpression (Binary Less (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evalExpr (Binary Less (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EBool (left /= right && (isSubstring left right))
-evalExpression (Binary Less (ElemExpr left) (ElemExpr right)) =
+evalExpr (Binary Less (ElemExpr left) (ElemExpr right)) =
   evalOpposite Less Greater (ElemExpr left) (ElemExpr right)
 -- Superset
-evalExpression (Binary SuperSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary SuperSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EBool (left >= right)
-evalExpression (Binary SuperSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evalExpr (Binary SuperSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   EBool (left >= right)
-evalExpression (Binary SuperSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evalExpr (Binary SuperSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EBool (isSubstring right left)
 -- Subset
-evalExpression (Binary SubSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary SubSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EBool (left <= right)
-evalExpression (Binary SubSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evalExpr (Binary SubSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   EBool (left <= right)
-evalExpression (Binary SubSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evalExpr (Binary SubSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EBool (isSubstring left right)
 -- Multiply
-evalExpression (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EInt (left * right)
 -- Divide
-evalExpression (Binary Divide (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evalExpr (Binary Divide (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   EFloat (left / right)
-evalExpression (Binary Divide (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary Divide (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EInt (div left right)
 -- Minus
-evalExpression (Binary Minus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary Minus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EInt (left - right)
 -- Plus
-evalExpression (Binary Plus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evalExpr (Binary Plus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EInt (left + right)
-evalExpression (Binary Plus (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evalExpr (Binary Plus (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EString (left ++ right)
-evalExpression (Binary op (ElemExpr left) (ElemExpr right)) =
+evalExpr (Binary op (ElemExpr left) (ElemExpr right)) =
   evalError op left right
-evalExpression (Binary op left right) =
-  evalExpression
+evalExpr (Binary op left right) =
+  evalExpr
     (Binary
        op
-       (ElemExpr (evalExpression left))
-       (ElemExpr (evalExpression right)))
+       (ElemExpr (evalExpr left))
+       (ElemExpr (evalExpr right)))

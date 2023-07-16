@@ -19,7 +19,7 @@ repl lnr = do
     let ast = (run vektoriaParse) tokens
 
     let v = case ast of
-            [(parsed, [])] -> (evalExpression $ head parsed)
+            [(parsed, [])] -> (evalExpr $ head parsed)
             [(parsed, notParsed)] -> EError ("Syntax Error, could not parse: "++ (show notParsed))
             _ -> EError ("Error")
     print v
