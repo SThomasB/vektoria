@@ -1,5 +1,7 @@
 module Main where
 import Lib.VLex
+import Lib.VParse
+import Lib.VInterpret
 import Lib.Data.Token
 main :: IO ()
 main = do
