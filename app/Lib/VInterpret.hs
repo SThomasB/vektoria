@@ -1,5 +1,5 @@
 module Lib.VInterpret
-  ( evalExpr, interpretAssign, VState, initState)
+  ( evalExpr, interpretAssign, VState, initState, from, dereference)
   where
 
 import qualified Data.Text as T
@@ -14,6 +14,10 @@ initState = HashMap.empty
 interpretAssign :: VState -> Statement -> VState
 interpretAssign state (Assign e) = HashMap.insert (name e) e state
 
+from :: String -> VState -> Expression
+a `from` s = case HashMap.lookup a s of
+  Just e -> thing e
+  Nothing -> ElemExpr (EError (a ++ " does not exist"))
 
 -- pack converts string to text (not lazy)
 isSubstring :: String -> String -> Bool
@@ -29,9 +33,16 @@ evalOpposite op opposite (ElemExpr left) (ElemExpr right) =
     (EBool b) -> EBool (not b)
     _ -> (evalError op left right)
 
+
+dereference :: VState -> Expression -> Expression
+dereference state (Ref r) = r `from` state
+dereference state (Binary op left right) = (Binary op (dereference state left) (dereference state right))
+dereference _ e = e
+
 -- Evaluate expressions
 evalExpr :: Expression -> Element
 evalExpr (ElemExpr expr) = expr
+evalExpr (Ref r) = EError r
 -- comparisons
 -- And
 evalExpr (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =

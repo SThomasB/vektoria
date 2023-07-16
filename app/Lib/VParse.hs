@@ -15,30 +15,26 @@ vektoriaParse = do
   statement
 
 statement :: Parser [Token] Statement
-statement = do
-  assignStatement
-  <|>printStatement
-  <|>weakStatement
+statement = do assignStatement <|> printStatement <|> weakStatement
 
 assignStatement :: Parser [Token] Statement
 assignStatement = do
-    identifier <- matchSymbol SIdentifier
-    matchSymbol SEqual
-    expr <- expression
-    let entityName = lexeme identifier
-    return (Assign $ Entity entityName expr)
-
+  identifier <- matchSymbol SIdentifier
+  matchSymbol SEqual
+  expr <- expression
+  let entityName = lexeme identifier
+  return (Assign $ Entity entityName expr)
 
 printStatement :: Parser [Token] Statement
 printStatement = do
-    identifier <- matchSymbol SPrint
-    expr <- expression
-    return (Print $ expr)
+  matchSymbol SPrint
+  expr <- expression
+  return (Print $ expr)
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
-    expr <- expression
-    return $ Weak expr
+  expr <- expression
+  return $ Weak expr
 
 expression :: Parser [Token] Expression
 expression =
@@ -68,7 +64,6 @@ binaryExpression syms operand = do
       return (op, right)
   return $ foldl (\acc (op, expr) -> Binary op acc expr) left rest
 
-
 operator :: Parser [Token] Operator
 operator = do
   token <- next
@@ -92,8 +87,6 @@ matchOneOf syms = do
     then return token
     else empty
 
-
-
 term :: Parser [Token] Expression
 term = binaryExpression [SStar, SSlash] factor
 
@@ -110,9 +103,11 @@ parenExpr = do
 literalExpr :: Parser [Token] Expression
 literalExpr = do
   token <- next
-  if (isLiteral token)
-    then return (ElemExpr (element token))
-    else empty
+  if (match SIdentifier token)
+    then return (Ref (lexeme token))
+    else if (isLiteral token)
+           then return (ElemExpr (element token))
+           else empty
 
 parseOp :: Operator -> Parser [Token] Operator
 parseOp thisOp = do

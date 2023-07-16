@@ -21,8 +21,11 @@ repl state lnr = do
     let stmt = head (fst (head ast))
     case stmt of
       Assign e -> repl (interpretAssign state (Assign e)) (lnr+1)
-      Print _ -> print state
-      _ -> print stmt
+      Print e -> print (evalExpr (dereference state e))
+      Weak e -> do
+        let expr = dereference state e
+        print $ (show expr) ++ "->"
+        print $ evalExpr (dereference state expr)
     repl state (lnr + 1)
 
 
