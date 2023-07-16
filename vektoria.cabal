@@ -30,6 +30,8 @@ executable vektoria
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     other-modules: Lib.VLex
+                , Lib.VParse
+                , Lib.VInterpret
                 , Lib.Data.Token
                 , Lib.Parser.Parser
     build-depends:    base ^>=4.16.4.0
