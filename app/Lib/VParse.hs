@@ -10,9 +10,64 @@ import Lib.Parser.Parser
 -- bin ::= term + expr | expr | term
 -- term ::= factor * term | factor
 -- factor ::= (expr) | int
-vektoriaParse :: Parser [Token] Expression
+vektoriaParse :: Parser [Token] Statement
 vektoriaParse = do
-  expression
+  statement
+
+statement :: Parser [Token] Statement
+statement = do
+  assignStatement
+  <|>printStatement
+  <|>weakStatement
+
+assignStatement :: Parser [Token] Statement
+assignStatement = do
+    identifier <- matchSymbol SIdentifier
+    matchSymbol SEqual
+    expr <- expression
+    let entityName = lexeme identifier
+    return (Assign $ Entity entityName expr)
+
+
+printStatement :: Parser [Token] Statement
+printStatement = do
+    identifier <- matchSymbol SPrint
+    expr <- expression
+    return (Print $ expr)
+
+weakStatement :: Parser [Token] Statement
+weakStatement = do
+    expr <- expression
+    return $ Weak expr
+
+expression :: Parser [Token] Expression
+expression =
+  binaryExpression
+    [ SPlus
+    , SMinus
+    , SRight
+    , SLeft
+    , SLeftEqual
+    , SRightEqual
+    , SEqualEqual
+    , SBarBar
+    , SAndAnd
+    , SSlashEqual
+    ]
+    term
+
+binaryExpression ::
+     [Symbol] -> Parser [Token] Expression -> Parser [Token] Expression
+binaryExpression syms operand = do
+  left <- operand
+  rest <-
+    many $ do
+      token <- matchOneOf syms
+      let op = getOperator token
+      right <- operand
+      return (op, right)
+  return $ foldl (\acc (op, expr) -> Binary op acc expr) left rest
+
 
 operator :: Parser [Token] Operator
 operator = do
@@ -37,33 +92,7 @@ matchOneOf syms = do
     then return token
     else empty
 
-binaryExpression ::
-     [Symbol] -> Parser [Token] Expression -> Parser [Token] Expression
-binaryExpression syms operand = do
-  left <- operand
-  rest <-
-    many $ do
-      token <- matchOneOf syms
-      let op = getOperator token
-      right <- operand
-      return (op, right)
-  return $ foldl (\acc (op, expr) -> Binary op acc expr) left rest
 
-expression :: Parser [Token] Expression
-expression =
-  binaryExpression
-    [ SPlus
-    , SMinus
-    , SRight
-    , SLeft
-    , SLeftEqual
-    , SRightEqual
-    , SEqualEqual
-    , SBarBar
-    , SAndAnd
-    , SSlashEqual
-    ]
-    term
 
 term :: Parser [Token] Expression
 term = binaryExpression [SStar, SSlash] factor

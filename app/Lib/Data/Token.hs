@@ -6,6 +6,7 @@ data Symbol
   | SEqualEqual
   | SFalse
   | STrue
+  | SPrint
   | SPlus
   | SMinus
   | SStar
@@ -51,6 +52,18 @@ data Element
   | EVoid
   | EError String
   deriving (Show, Eq)
+
+data Entity = Entity
+  { name :: String
+  , thing :: Expression
+  }
+  deriving Show
+
+data Statement
+    = Assign Entity
+    | Print Expression
+    | Weak Expression
+    deriving Show
 
 data Expression
   = Binary Operator Expression Expression

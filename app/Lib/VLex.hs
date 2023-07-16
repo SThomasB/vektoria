@@ -7,6 +7,7 @@ type Lexer = Parser String Token
 vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
     (ignoreSpace $ identifierToken lineNr)
+    <|> (ignoreSpace $ printToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
     <|> (ignoreSpace $ falseToken lineNr)
     <|> stringToken lineNr
@@ -33,7 +34,6 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ leftParenToken lineNr)
     <|> (ignoreSpace $ rightParenToken lineNr)
     <|> (ignoreSpace $ barToken lineNr)
-
 
 identifierToken :: Int -> Lexer
 identifierToken line = do
@@ -132,6 +132,11 @@ trueToken :: Int -> Lexer
 trueToken lineNr = do
     glyphs "True"
     return $ Token STrue lineNr "True" (EBool True)
+
+printToken :: Int -> Lexer
+printToken lineNr = do
+    glyphs "Print"
+    return $ Token SPrint lineNr "Print" (EVoid)
 
 stringToken :: Int -> Lexer
 stringToken line = do

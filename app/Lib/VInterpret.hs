@@ -1,9 +1,19 @@
 module Lib.VInterpret
-  ( evalExpr
-  ) where
+  ( evalExpr, interpretAssign, VState, initState)
+  where
 
 import qualified Data.Text as T
 import Lib.Data.Token
+import qualified Data.HashMap.Strict as HashMap
+
+type VState = HashMap.HashMap String Entity
+
+initState :: VState
+initState = HashMap.empty
+
+interpretAssign :: VState -> Statement -> VState
+interpretAssign state (Assign e) = HashMap.insert (name e) e state
+
 
 -- pack converts string to text (not lazy)
 isSubstring :: String -> String -> Bool
