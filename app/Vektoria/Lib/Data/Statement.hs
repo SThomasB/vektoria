@@ -1,7 +1,10 @@
 module Vektoria.Lib.Data.Statement where
 
 data Statement
-    = Assign Entity
+    =
+    Block [Statement]
+    | IfElse Expression Statement Statement
+    | Assign Entity
     | Print Expression
     | Weak Expression
     deriving Show

@@ -30,9 +30,43 @@ getOperator token =
 vektoriaParse :: Parser [Token] Statement
 vektoriaParse = do
   statement
+  <|>block
+
+block :: Parser [Token] Statement
+block = do
+  symbolSatisfy (==SLeftBrace)
+  result <- (many vektoriaParse)
+  symbolSatisfy (==SRightBrace)
+  return $ Block result
 
 statement :: Parser [Token] Statement
-statement = do assignStatement <|> printStatement <|> weakStatement
+statement = do assignStatement <|> ifElseStatement <|> printStatement <|> weakStatement
+
+
+ifElseStatement :: Parser [Token] Statement
+ifElseStatement = do
+    symbolSatisfy (==SIf)
+    condition <- expression
+    thenBlock <- do
+        block
+        <|> weakStatement
+        <|> printStatement
+    symbolSatisfy (==SElse)
+    elseBlock <- do
+        block
+        <|> ifElseStatement
+        <|> weakStatement
+        <|> printStatement
+    return $ IfElse condition thenBlock elseBlock
+    <|> do
+        symbolSatisfy (==SIf)
+        condition <- expression
+        thenBlock <- do
+          block
+          <|> weakStatement
+          <|> printStatement
+        return $ IfElse condition thenBlock (Block [])
+
 
 assignStatement :: Parser [Token] Statement
 assignStatement = do
@@ -101,7 +135,7 @@ literalExpr = do
   return $ Ref (lexeme token)
   <|> do
     token <- symbolSatisfy (==SString)
-    return $ ElemExpr (EString (lexeme token))
+    return $ ElemExpr (EString ((init . tail) $ lexeme token))
   <|> do
     token <- symbolSatisfy (==SInt)
     return $ ElemExpr (EInt (read $ lexeme token))

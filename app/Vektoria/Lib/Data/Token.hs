@@ -8,8 +8,11 @@ data Token = Token
 
 data Symbol
   = SIdentifier
+  | SIf
+  | SElse
   | SEqual
   | SEqualEqual
+  | SMinusMinus
   | SFalse
   | STrue
   | SPrint

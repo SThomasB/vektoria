@@ -1,0 +1,28 @@
+
+If true {
+    x = 5
+    Print x
+} Else {
+    x = 10
+    Print x
+}
+
+
+a = <- {
+    10+20
+} -> Print "hello" + <>
+
+a = <- { x = 20, y = 20, x+y }-> Print "hello "+ .
+
+Print (a + .) <- {
+    y = 10
+    x = 20
+    x + y
+}
+
+
+
+
+
+
+
