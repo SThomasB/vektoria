@@ -2,7 +2,6 @@ module Vektoria.Parser.VParse
   ( vektoriaParse
   , run
   ) where
-
 import Data.Char
 import Vektoria.Lib.Data.Token
 import Vektoria.Lib.Data.Statement
@@ -57,43 +56,33 @@ weakStatement = do
 expression :: Parser [Token] Expression
 expression =
   binaryExpression
-    [ SPlus
-    , SMinus
-    , SRight
-    , SLeft
-    , SLeftEqual
-    , SRightEqual
-    , SEqualEqual
-    , SBarBar
-    , SAndAnd
-    , SSlashEqual
+    [ Plus
+    , Minus
+    , Greater
+    , Less
+    , SubSet
+    , SuperSet
+    , Equals
+    , Or
+    , And
+    , NotEquals
     ]
     term
 
 binaryExpression ::
-     [Symbol] -> Parser [Token] Expression -> Parser [Token] Expression
-binaryExpression syms operand = do
+     [Operator] -> Parser [Token] Expression -> Parser [Token] Expression
+binaryExpression operators operand = do
   left <- operand
   rest <-
     many $ do
-      token <- symbolSatisfy (oneOf syms)
-      let op = getOperator token
+      op <- operatorSatisfy (isOneOf operators)
       right <- operand
       return (op, right)
   return $ foldl (\acc (op, expr) -> Binary op acc expr) left rest
 
-operator :: Parser [Token] Operator
-operator = do
-  token <- next
-  let op = getOperator token
-  return op
-
-isLiteral :: Token -> Bool
-isLiteral token = (element token) /= EVoid
-
 
 term :: Parser [Token] Expression
-term = binaryExpression [SStar, SSlash] factor
+term = binaryExpression [Multiply, Divide] factor
 
 factor :: Parser [Token] Expression
 factor = literalExpr <|> parenExpr
@@ -108,26 +97,34 @@ parenExpr = do
 
 literalExpr :: Parser [Token] Expression
 literalExpr = do
+  token <- symbolSatisfy (==SIdentifier)
+  return $ Ref (lexeme token)
+  <|> do
+    token <- symbolSatisfy (==SString)
+    return $ ElemExpr (EString (lexeme token))
+  <|> do
+    token <- symbolSatisfy (==SInt)
+    return $ ElemExpr (EInt (read $ lexeme token))
+  <|> do
+    token <- symbolSatisfy (==SFloat)
+    return $ ElemExpr (EFloat (read $ lexeme token))
+  <|> do
+    token <- symbolSatisfy (==SFalse)
+    return $ ElemExpr (EBool False)
+  <|> do
+    token <- symbolSatisfy (==STrue)
+    return $ ElemExpr (EBool True)
+
+
+operatorSatisfy :: (Operator -> Bool) -> Parser [Token] Operator
+operatorSatisfy predicate = do
   token <- next
-  if (match SIdentifier token)
-    then return (Ref (lexeme token))
-    else if (isLiteral token)
-           then return (ElemExpr (element token))
-           else empty
-
-
-parseOp :: Operator -> Parser [Token] Operator
-parseOp thisOp = do
-  n <- next
-  let op = getOperator n
-  if (thisOp == op)
-    then return op
-    else empty
-
+  let op = getOperator token
+  if (predicate op) then return op else empty
 
 symbolSatisfy :: (Symbol->Bool) -> Parser [Token] Token
 symbolSatisfy = satisfy symbol
 
-oneOf :: Eq a => [a] -> (a -> Bool)
-oneOf = flip elem
+isOneOf :: Eq a => [a] -> (a -> Bool)
+isOneOf = flip elem
 
