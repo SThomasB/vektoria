@@ -1,12 +1,14 @@
 
-module Lib.VLex (vektoriaLex) where
-import Lib.Parser.Parser
+module Vektoria.Lexer.VLex (vektoriaLex) where
+import Vektoria.Lib.Data.Token
+import Vektoria.Lib.ParsingGenerics
 import Data.Char
-import Lib.Data.Token
+
 type Lexer = Parser String Token
 vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
     (ignoreSpace $ identifierToken lineNr)
+    <|> (ignoreSpace $ printToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
     <|> (ignoreSpace $ falseToken lineNr)
     <|> stringToken lineNr
@@ -34,11 +36,10 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ rightParenToken lineNr)
     <|> (ignoreSpace $ barToken lineNr)
 
-
 identifierToken :: Int -> Lexer
 identifierToken line = do
-    first <- satisfy isLower
-    remaining <- many $ satisfy isAlphaNum
+    first <- charSatisfy isLower
+    remaining <- many $ charSatisfy isAlphaNum
     return $ Token SIdentifier line (first:remaining) EVoid
 
 
@@ -46,6 +47,7 @@ parseGlyphToken :: Symbol -> Char -> Int -> Lexer
 parseGlyphToken sym thisGlyph line = do
     glyph thisGlyph
     return $ Token sym line [thisGlyph] EVoid
+
 
 leftParenToken :: Int -> Lexer
 leftParenToken = parseGlyphToken SLeftParen '('
@@ -61,7 +63,6 @@ rightBracketToken = parseGlyphToken SRightBracket ']'
 
 leftBraceToken :: Int -> Lexer
 leftBraceToken = parseGlyphToken SLeftBrace '{'
-
 
 rightBraceToken :: Int -> Lexer
 rightBraceToken = parseGlyphToken SRightBrace '}'
@@ -133,25 +134,53 @@ trueToken lineNr = do
     glyphs "True"
     return $ Token STrue lineNr "True" (EBool True)
 
+printToken :: Int -> Lexer
+printToken lineNr = do
+    glyphs "Print"
+    return $ Token SPrint lineNr "Print" (EVoid)
+
 stringToken :: Int -> Lexer
 stringToken line = do
     first <- glyph '"'
-    middle <- some $ satisfy (/='"')
+    middle <- some $ charSatisfy (/='"')
     last <- glyph '"'
     return $ Token SString line ((first:middle)++[last]) (EString middle)
 
 intToken :: Int -> Lexer
 intToken line = do
-    n <- some $ satisfy isDigit
+    n <- some $ charSatisfy isDigit
     return $ Token SInt line n (EInt (read n))
 
 floatToken :: Int -> Lexer
 floatToken line = do
-    n <- some $ satisfy isDigit
+    n <- some $ charSatisfy isDigit
     glyph '.'
-    d <- some $ satisfy isDigit
+    d <- some $ charSatisfy isDigit
     let number = n ++ ('.':d)
     return $ Token SFloat line number (EFloat (read number))
 
 
+char :: Parser String Char
+char = next
 
+charSatisfy :: (Char -> Bool) -> Parser String Char
+charSatisfy = satisfy id
+
+glyph :: Char -> Parser String Char
+glyph = matchItem
+
+glyphs :: String -> Parser String String
+glyphs = matchSequence
+
+
+space :: Parser String ()
+space = do
+    many (charSatisfy isSpace)
+    return ()
+
+ignoreSpace :: Parser String a -> Parser String a
+ignoreSpace parser = do
+    space
+    result <- parser
+    space
+    return result

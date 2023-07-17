@@ -1,13 +1,29 @@
-module Lib.VInterpret
-  ( evalExpr
-  ) where
+module Vektoria.Interpreter.VInterpret
+  ( evalExpr, interpretAssign, VState, initState, from, dereference)
+  where
 
 import qualified Data.Text as T
-import Lib.Data.Token
+import Vektoria.Lib.Data.Token
+import Vektoria.Lib.Data.Statement
+import qualified Data.HashMap.Strict as HashMap
+
+type VState = HashMap.HashMap String Entity
+
+initState :: VState
+initState = HashMap.empty
+
+interpretAssign :: VState -> Statement -> VState
+interpretAssign state (Assign e) = HashMap.insert (name e) Entity {name=(name e), thing=(dereference state (thing e))} state
+
+from :: String -> VState -> Expression
+a `from` s = case HashMap.lookup a s of
+  Just e -> thing e
+  Nothing -> ElemExpr (EError (a ++ " does not exist"))
 
 -- pack converts string to text (not lazy)
 isSubstring :: String -> String -> Bool
 isSubstring needle haystack = T.isInfixOf (T.pack needle) (T.pack haystack)
+
 
 evalError :: Operator -> Element -> Element -> Element
 evalError op e1 e2 =
@@ -19,9 +35,17 @@ evalOpposite op opposite (ElemExpr left) (ElemExpr right) =
     (EBool b) -> EBool (not b)
     _ -> (evalError op left right)
 
+
+dereference :: VState -> Expression -> Expression
+dereference state (Ref r) = r `from` state
+dereference state (Binary op left right) = (Binary op (dereference state left) (dereference state right))
+dereference _ e = e
+
+
 -- Evaluate expressions
 evalExpr :: Expression -> Element
 evalExpr (ElemExpr expr) = expr
+evalExpr (Ref r) = EError r
 -- comparisons
 -- And
 evalExpr (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =

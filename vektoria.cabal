@@ -29,12 +29,14 @@ executable vektoria
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    other-modules: Lib.VLex
-                , Lib.VParse
-                , Lib.VInterpret
-                , Lib.Data.Token
-                , Lib.Parser.Parser
+    other-modules: Vektoria.Lexer.VLex
+                , Vektoria.Parser.VParse
+                , Vektoria.Interpreter.VInterpret
+                , Vektoria.Lib.Data.Token
+                , Vektoria.Lib.Data.Statement
+                , Vektoria.Lib.ParsingGenerics
     build-depends:    base ^>=4.16.4.0
                     , text
+                    , unordered-containers
     hs-source-dirs:   app
     default-language: Haskell2010
