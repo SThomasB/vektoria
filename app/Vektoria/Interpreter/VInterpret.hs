@@ -1,9 +1,10 @@
-module Lib.VInterpret
+module Vektoria.Interpreter.VInterpret
   ( evalExpr, interpretAssign, VState, initState, from, dereference)
   where
 
 import qualified Data.Text as T
-import Lib.Data.Token
+import Vektoria.Lib.Data.Token
+import Vektoria.Lib.Data.Statement
 import qualified Data.HashMap.Strict as HashMap
 
 type VState = HashMap.HashMap String Entity
@@ -22,6 +23,7 @@ a `from` s = case HashMap.lookup a s of
 -- pack converts string to text (not lazy)
 isSubstring :: String -> String -> Bool
 isSubstring needle haystack = T.isInfixOf (T.pack needle) (T.pack haystack)
+
 
 evalError :: Operator -> Element -> Element -> Element
 evalError op e1 e2 =

@@ -1,11 +1,29 @@
-module Lib.VParse
+module Vektoria.Parser.VParse
   ( vektoriaParse
   , run
   ) where
 
 import Data.Char
-import Lib.Data.Token
-import Lib.Parser.Parser
+import Vektoria.Lib.Data.Token
+import Vektoria.Lib.Data.Statement
+import Vektoria.Lib.ParsingGenerics
+
+getOperator :: Token -> Operator
+getOperator token =
+  case (symbol token) of
+    SPlus -> Plus
+    SMinus -> Minus
+    SEqualEqual -> Equals
+    SSlashEqual -> NotEquals
+    SAndAnd -> And
+    SBarBar -> Or
+    SLeft -> Less
+    SRight -> Greater
+    SLeftEqual -> SubSet
+    SRightEqual -> SuperSet
+    SStar -> Multiply
+    SSlash -> Divide
+    _ -> NoOp
 
 -- bin ::= term + expr | expr | term
 -- term ::= factor * term | factor
@@ -19,15 +37,15 @@ statement = do assignStatement <|> printStatement <|> weakStatement
 
 assignStatement :: Parser [Token] Statement
 assignStatement = do
-  identifier <- matchSymbol SIdentifier
-  matchSymbol SEqual
+  identifier <- symbolSatisfy (==SIdentifier)
+  symbolSatisfy (==SEqual)
   expr <- expression
   let entityName = lexeme identifier
   return (Assign $ Entity entityName expr)
 
 printStatement :: Parser [Token] Statement
 printStatement = do
-  matchSymbol SPrint
+  symbolSatisfy (==SPrint)
   expr <- expression
   return (Print $ expr)
 
@@ -58,7 +76,7 @@ binaryExpression syms operand = do
   left <- operand
   rest <-
     many $ do
-      token <- matchOneOf syms
+      token <- symbolSatisfy (oneOf syms)
       let op = getOperator token
       right <- operand
       return (op, right)
@@ -73,19 +91,6 @@ operator = do
 isLiteral :: Token -> Bool
 isLiteral token = (element token) /= EVoid
 
-matchSymbol :: Symbol -> Parser [Token] Token
-matchSymbol sym = do
-  token <- next
-  if (match sym token)
-    then return token
-    else empty
-
-matchOneOf :: [Symbol] -> Parser [Token] Token
-matchOneOf syms = do
-  token <- next
-  if ((symbol token) `elem` syms)
-    then return token
-    else empty
 
 term :: Parser [Token] Expression
 term = binaryExpression [SStar, SSlash] factor
@@ -95,10 +100,11 @@ factor = literalExpr <|> parenExpr
 
 parenExpr :: Parser [Token] Expression
 parenExpr = do
-  matchSymbol SLeftParen
+  symbolSatisfy (==SLeftParen)
   expr <- expression
-  matchSymbol SRightParen
+  symbolSatisfy (==SRightParen)
   return expr
+
 
 literalExpr :: Parser [Token] Expression
 literalExpr = do
@@ -109,6 +115,7 @@ literalExpr = do
            then return (ElemExpr (element token))
            else empty
 
+
 parseOp :: Operator -> Parser [Token] Operator
 parseOp thisOp = do
   n <- next
@@ -117,9 +124,10 @@ parseOp thisOp = do
     then return op
     else empty
 
-next :: Parser [Token] Token
-next =
-  Parser $ \tokens ->
-    case tokens of
-      [] -> []
-      (result:remaining) -> [(result, remaining)]
+
+symbolSatisfy :: (Symbol->Bool) -> Parser [Token] Token
+symbolSatisfy = satisfy symbol
+
+oneOf :: Eq a => [a] -> (a -> Bool)
+oneOf = flip elem
+

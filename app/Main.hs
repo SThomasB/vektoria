@@ -1,8 +1,9 @@
 module Main where
-import Lib.VLex
-import Lib.VParse
-import Lib.VInterpret
-import Lib.Data.Token
+import Vektoria.Lexer.VLex
+import Vektoria.Parser.VParse
+import Vektoria.Interpreter.VInterpret
+import Vektoria.Lib.Data.Statement
+import Vektoria.Lib.Data.Token
 import System.Environment
 import System.IO
 import Control.Monad (foldM)
