@@ -10,4 +10,29 @@ p = x2>x3
 Print p
 Print x2
 Print x3
+Print "-------------control flow & clauses-------------"
+If 10>x {
+    Print "f is"
+   f = 10
+   Print f
+   Print "g is"
+   g = 15
+   Print g
+   Print "f+g"
+   Print f+g
+}
+If p==False {
+    Print "Not good"
+} Else Print "Else clause fired"
+
+Print "f should not exist in this scope"
+Print f
+
+If False {
+Print "Error on line 32; since in a guarded clause"
+} Else If False {"Error on line 33; since in a guarded clause"} Else {
+    Print "Success on line 34; this should execute"
+}
+
+Print "---------------Program terminated---------------------"
 

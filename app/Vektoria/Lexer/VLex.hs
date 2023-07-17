@@ -8,6 +8,8 @@ type Lexer = Parser String Token
 vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
     (ignoreSpace $ identifierToken lineNr)
+    <|> (ignoreSpace $ ifToken lineNr)
+    <|> (ignoreSpace $ elseToken lineNr)
     <|> (ignoreSpace $ printToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
     <|> (ignoreSpace $ falseToken lineNr)
@@ -124,6 +126,8 @@ barBarToken = parseGlyphsToken SBarBar "||"
 andAndToken :: Int -> Lexer
 andAndToken = parseGlyphsToken SAndAnd "&&"
 
+minusMinusToken :: Int -> Lexer
+minusMinusToken = parseGlyphsToken SMinusMinus "--"
 falseToken :: Int -> Lexer
 falseToken lineNr = do
     glyphs "False"
@@ -138,6 +142,17 @@ printToken :: Int -> Lexer
 printToken lineNr = do
     glyphs "Print"
     return $ Token SPrint lineNr "Print"
+
+
+ifToken :: Int -> Lexer
+ifToken lineNr = do
+    glyphs "If"
+    return $ Token SIf lineNr "If"
+
+elseToken :: Int -> Lexer
+elseToken lineNr = do
+    glyphs "Else"
+    return $ Token SElse lineNr "Else"
 
 stringToken :: Int -> Lexer
 stringToken line = do
