@@ -11,7 +11,7 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-      [] -> interpretFile "test.vkt"
+      [] -> interpretFile "test.vk"
       [filePath] -> do interpretFile filePath
       _ -> putStrLn "Invalid arguments."
 

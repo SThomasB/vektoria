@@ -1,9 +1,11 @@
+
+
 a = "hello"
 b = "world"
 Print a+" "+b
 y = 10
 z = 33
-x = (y+z)/z
+x = (y + z)/z
 x2 = x+z+y
 x3 = ((x+z+y)/(x2)) * 10
 p = x2>x3
@@ -11,8 +13,8 @@ Print p
 Print x2
 Print x3
 Print "-------------control flow & clauses-------------"
-If 10>x {
-    Print "f is"
+If 10 > x {
+   Print "f is"
    f = 10
    Print f
    Print "g is"
@@ -30,9 +32,11 @@ Print f
 
 If False {
 Print "Error on line 32; since in a guarded clause"
-} Else If False {"Error on line 33; since in a guarded clause"} Else {
+} Else If False { Print "Error on line 33; since in a guarded clause"} Else {
     Print "Success on line 34; this should execute"
 }
 
 Print "---------------Program terminated---------------------"
+
+
 
