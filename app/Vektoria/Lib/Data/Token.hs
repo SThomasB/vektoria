@@ -4,7 +4,6 @@ data Token = Token
   { symbol :: Symbol
   , line :: Int
   , lexeme :: String
-  , element :: Element
   } deriving (Show, Eq)
 
 data Symbol
@@ -44,12 +43,4 @@ data Symbol
 match :: Symbol -> Token -> Bool
 match sym token = (symbol token) == sym
 
-data Element
-  = EInt Int
-  | EString String
-  | EFloat Float
-  | EBool Bool
-  | EVoid
-  | EError String
-  deriving (Show, Eq)
 

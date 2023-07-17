@@ -1,5 +1,4 @@
 module Vektoria.Lib.Data.Statement where
-import Vektoria.Lib.Data.Token (Element)
 
 data Statement
     = Assign Entity
@@ -39,5 +38,14 @@ data Operator
   | And
   | Or
   | NoOp
+  deriving (Show, Eq)
+
+data Element
+  = EInt Int
+  | EString String
+  | EFloat Float
+  | EBool Bool
+  | EVoid
+  | EError String
   deriving (Show, Eq)
 

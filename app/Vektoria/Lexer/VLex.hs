@@ -40,13 +40,13 @@ identifierToken :: Int -> Lexer
 identifierToken line = do
     first <- charSatisfy isLower
     remaining <- many $ charSatisfy isAlphaNum
-    return $ Token SIdentifier line (first:remaining) EVoid
+    return $ Token SIdentifier line (first:remaining)
 
 
 parseGlyphToken :: Symbol -> Char -> Int -> Lexer
 parseGlyphToken sym thisGlyph line = do
     glyph thisGlyph
-    return $ Token sym line [thisGlyph] EVoid
+    return $ Token sym line [thisGlyph]
 
 
 leftParenToken :: Int -> Lexer
@@ -98,7 +98,7 @@ plusToken = parseGlyphToken SPlus '+'
 parseGlyphsToken :: Symbol -> String -> Int -> Lexer
 parseGlyphsToken sym theseGlyphs line = do
     glyphs theseGlyphs
-    return $ Token sym line theseGlyphs EVoid
+    return $ Token sym line theseGlyphs
 
 diamondToken :: Int -> Lexer
 diamondToken = parseGlyphsToken SDiamond "<>"
@@ -127,29 +127,29 @@ andAndToken = parseGlyphsToken SAndAnd "&&"
 falseToken :: Int -> Lexer
 falseToken lineNr = do
     glyphs "False"
-    return $ Token SFalse lineNr "False" (EBool False)
+    return $ Token SFalse lineNr "False"
 
 trueToken :: Int -> Lexer
 trueToken lineNr = do
     glyphs "True"
-    return $ Token STrue lineNr "True" (EBool True)
+    return $ Token STrue lineNr "True"
 
 printToken :: Int -> Lexer
 printToken lineNr = do
     glyphs "Print"
-    return $ Token SPrint lineNr "Print" (EVoid)
+    return $ Token SPrint lineNr "Print"
 
 stringToken :: Int -> Lexer
 stringToken line = do
     first <- glyph '"'
     middle <- some $ charSatisfy (/='"')
     last <- glyph '"'
-    return $ Token SString line ((first:middle)++[last]) (EString middle)
+    return $ Token SString line ((first:middle)++[last])
 
 intToken :: Int -> Lexer
 intToken line = do
     n <- some $ charSatisfy isDigit
-    return $ Token SInt line n (EInt (read n))
+    return $ Token SInt line n
 
 floatToken :: Int -> Lexer
 floatToken line = do
@@ -157,8 +157,7 @@ floatToken line = do
     glyph '.'
     d <- some $ charSatisfy isDigit
     let number = n ++ ('.':d)
-    return $ Token SFloat line number (EFloat (read number))
-
+    return $ Token SFloat line number
 
 char :: Parser String Char
 char = next
@@ -171,7 +170,6 @@ glyph = matchItem
 
 glyphs :: String -> Parser String String
 glyphs = matchSequence
-
 
 space :: Parser String ()
 space = do
