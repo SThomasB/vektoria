@@ -1,5 +1,5 @@
 module Vektoria.Interpreter.VInterpret
-  ( interpret, interpreter, EntityMap, initState, from, dereference)
+  ( interpret, interpreter, errors, EntityMap, RuntimeState, initRuntime, from, dereference)
   where
 import Vektoria.Interpreter.Evaluator
 import qualified Data.Text as T
@@ -16,12 +16,16 @@ type EntityMap = HashMap.HashMap String Entity
 named :: EntityMap -> String -> (Maybe Entity)
 entities `named` name = HashMap.lookup name entities
 
+initEntityMap :: EntityMap
+initEntityMap = HashMap.empty
+
 data RuntimeState = RuntimeState
   { entities :: EntityMap
   , errors :: [Element]
   } deriving (Show)
 
-
+initRuntime::RuntimeState
+initRuntime = RuntimeState {entities=initEntityMap, errors=[]}
 
 type Runtime a = StateT RuntimeState IO a
 
@@ -52,7 +56,7 @@ interpreter stmt = case stmt of
         EBool True -> interpreter thenBlock
         EBool False -> interpreter elseBlock
         _ -> addError (EError "Expected a boolean in if condition")
-  Block thisBlock -> interpret thisBlock
+  Block thisBlock -> interpretBlock False thisBlock
   Assign (Entity name expr) -> do
     expr' <- dereference expr
     addEntity name (Entity name expr')
@@ -64,12 +68,37 @@ interpreter stmt = case stmt of
         let result = evaluate expr
         liftIO $ putStrLn (showElement result)
         addEntity ref (Entity ref (ElemExpr result))
+  Print expr -> do
+    expr' <- dereference expr
+    case expr' of
+      (ElemExpr (EError e)) -> addError (EError e)
+      _ -> do
+        result <- interpretEvaluation expr'
+        case result of
+          Nothing -> return ()
+          Just result' -> liftIO $ putStrLn (showElement result')
   Weak expr -> do
     expr'  <- dereference expr
     case expr' of
       (ElemExpr (EError e)) -> addError (EError e)
-      e -> liftIO $ print (evaluate expr)
+      e -> liftIO $ print (showElement (evaluate expr'))
 
+interpretEvaluation :: Expression -> Runtime (Maybe Element)
+interpretEvaluation expr = do
+    let result = evaluate expr
+    case result of
+      (EError e) -> do
+        addError (EError $ e ++" in: "++(show expr))
+        return Nothing
+      _ -> return $ Just result
+
+interpretBlock :: Bool -> [Statement] -> Runtime ()
+interpretBlock commit statements = do
+  oldState <- get
+  interpret statements
+  if commit
+    then return ()
+    else put oldState
 
 dereference :: Expression -> Runtime Expression
 dereference (Ref r) = do
@@ -90,8 +119,6 @@ a `from` s = case HashMap.lookup a s of
   Nothing -> ElemExpr (EError (a ++ " does not exist"))
 
 
-initState :: EntityMap
-initState = HashMap.empty
 
 --interpretAssign :: EntityMap -> Statement -> EntityMap
 --interpretAssign state (Assign e) = HashMap.insert (name e) Entity {name=(name e), thing=(dereference state (thing e))} state

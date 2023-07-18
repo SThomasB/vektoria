@@ -8,6 +8,7 @@ type Lexer = Parser String Token
 vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
     (ignoreSpace $ identifierToken lineNr)
+    <|> (ignoreSpace $ leftArrowToken lineNr)
     <|> (ignoreSpace $ ifToken lineNr)
     <|> (ignoreSpace $ elseToken lineNr)
     <|> (ignoreSpace $ printToken lineNr)
@@ -118,6 +119,8 @@ rightEqualToken = parseGlyphsToken SRightEqual ">="
 slashEqualToken :: Int -> Lexer
 slashEqualToken = parseGlyphsToken SSlashEqual "/="
 
+leftArrowToken :: Int -> Lexer
+leftArrowToken = parseGlyphsToken SLeftArrow "<-"
 
 barBarToken :: Int -> Lexer
 barBarToken = parseGlyphsToken SBarBar "||"

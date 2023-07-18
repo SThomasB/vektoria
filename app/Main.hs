@@ -7,6 +7,8 @@ import Vektoria.Lib.Data.Token
 import System.Environment
 import System.IO
 import Control.Monad (foldM)
+import Control.Monad.State (runStateT)
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -24,13 +26,14 @@ interpretFile filePath = do
     then do
       let tokenStream = concat ((map getTokens) lexedLines)
       let ast = runParse tokenStream
-      let statementStream = concat (map fst ast)
-      if 10==10
+      isValidAst <- checkAst ast
+      if isValidAst
         then do
-          _ <- interpret initState statementStream
+          let statementStream = concat (map fst ast)
+          (_, finalState) <- runStateT (interpret statementStream) initRuntime
           putStrLn ""
+          print (errors finalState)
         else putStrLn "Syntax error"
-      putStrLn ""
     else putStrLn "Unexpected token"
 
 allM :: Monad m => (a -> m Bool) -> [a] -> m Bool
@@ -71,7 +74,7 @@ checkAst [(t, [])] = do
   return True
 
 checkAst [(t, s)] = do
-  putStrLn $ "Could not parse: "++(show s)
+  putStrLn $ "Could not parse: "++(show $ head s)
   return False
 
 

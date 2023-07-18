@@ -40,7 +40,7 @@ block = do
   return $ Block result
 
 statement :: Parser [Token] Statement
-statement = do assignStatement <|> ifElseStatement <|> printStatement <|> weakStatement
+statement = do assignStatement <|> ifElseStatement <|> printStatement
 
 
 ifElseStatement :: Parser [Token] Statement
@@ -49,13 +49,11 @@ ifElseStatement = do
     condition <- expression
     thenBlock <- do
         block
-        <|> weakStatement
         <|> printStatement
     symbolSatisfy (==SElse)
     elseBlock <- do
         block
         <|> ifElseStatement
-        <|> weakStatement
         <|> printStatement
     return $ IfElse condition thenBlock elseBlock
     <|> do
@@ -63,7 +61,6 @@ ifElseStatement = do
         condition <- expression
         thenBlock <- do
           block
-          <|> weakStatement
           <|> printStatement
         return $ IfElse condition thenBlock (Block [])
 
@@ -84,6 +81,7 @@ printStatement = do
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
+  symbolSatisfy (==SLeftArrow)
   expr <- expression
   return $ Weak expr
 
