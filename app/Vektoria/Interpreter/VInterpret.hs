@@ -8,7 +8,7 @@ import Vektoria.Lib.Data.Statement
 import qualified Data.HashMap.Strict as HashMap
 import Control.Monad (foldM)
 import Control.Monad.State
-
+import System.CPUTime
 
 
 type EntityMap = HashMap.HashMap String Entity
@@ -16,13 +16,36 @@ type EntityMap = HashMap.HashMap String Entity
 named :: EntityMap -> String -> (Maybe Entity)
 entities `named` name = HashMap.lookup name entities
 
+
+
+
+
+
+
 initEntityMap :: EntityMap
-initEntityMap = HashMap.empty
+initEntityMap = HashMap.fromList [
+  ("add", Callable ["a", "b", "c"] (Binary Plus (Ref "a") (Binary Plus (Ref "b") (Ref "c"))))]
+
+
+getSysTime :: [Element] -> IO Expression
+getSysTime [] = do
+  cpuTimeNano <- getCPUTime
+  return $ ElemExpr (EFloat $ fromIntegral cpuTimeNano)
+getSystem [s] = return $ ElemExpr (EError "getSysTime takes zero arguments")
+
+
+
+-- what is a function?
+-- Is it a reference to a block?
+-- An Entity is then not a named expression
+-- But a named expression | statement
+
 
 data RuntimeState = RuntimeState
   { entities :: EntityMap
   , errors :: [Element]
   } deriving (Show)
+
 
 initRuntime::RuntimeState
 initRuntime = RuntimeState {entities=initEntityMap, errors=[]}
@@ -83,7 +106,50 @@ interpreter stmt = case stmt of
       (ElemExpr (EError e)) -> addError (EError e)
       e -> liftIO $ print (showElement (evaluate expr'))
 
+
+makeScope :: RuntimeState -> [(String, Entity)] -> RuntimeState
+makeScope state newEntities =
+    state { entities = HashMap.union (HashMap.fromList newEntities) (entities state)}
+
+
+evaluateArguments :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
+evaluateArguments bindings args = do
+  let boundArgs = zip bindings args
+  maybeResults <- mapM evaluateArg boundArgs
+  return (sequence maybeResults)
+  where
+    evaluateArg (binding, arg) = do
+      expr <- dereference arg
+      elem <- interpretEvaluation expr
+      case elem of
+        Nothing -> do
+          addError (EError "Error evaluating arguments")
+          return Nothing
+        Just elem -> return $ Just (binding, Entity binding (ElemExpr elem))
+
+
 interpretEvaluation :: Expression -> Runtime (Maybe Element)
+interpretEvaluation (Call (Ref ref) args) = do
+    ref' <- getEntity ref
+    case (ref') of
+      (Just (Callable bindings expr)) -> do
+        let arity = (length bindings)
+        let nrArgs = (length args)
+        if (arity == nrArgs)
+          then do
+            args' <- evaluateArguments bindings args
+            case args' of
+              Nothing -> return Nothing
+              Just validBindings -> do
+                oldState <- get
+                let functionScope = makeScope oldState validBindings
+                put functionScope
+                executableFunction <- dereference (expr)
+                maybeElem <- interpretEvaluation executableFunction
+                put oldState
+                return maybeElem
+          else return Nothing
+      _ -> return Nothing
 interpretEvaluation expr = do
     let result = evaluate expr
     case result of
@@ -105,6 +171,7 @@ dereference (Ref r) = do
   r' <- getEntity r
   case r' of
     Just (Entity name thing) -> return thing
+    Just (Callable name thing) -> return thing
     Nothing -> return $ ElemExpr (EError (r ++ " does not exist"))
 dereference (Binary op left right) = do
   left' <- dereference left

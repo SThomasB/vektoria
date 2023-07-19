@@ -23,6 +23,7 @@ evalOpposite op opposite (ElemExpr left) (ElemExpr right) =
 
 -- Evaluate expressions
 evaluate :: Expression -> Element
+evaluate (Call (Ref r) args) = EError "Can not evaluate"
 evaluate (ElemExpr expr) = expr
 evaluate (Ref r) = EError r
 -- comparisons

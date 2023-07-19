@@ -33,8 +33,8 @@ interpretFile filePath = do
           (_, finalState) <- runStateT (interpret statementStream) initRuntime
           putStrLn ""
           print (errors finalState)
-        else putStrLn "Syntax error"
-    else putStrLn "Unexpected token"
+        else return ()
+    else return ()
 
 notComment :: [Token] -> Bool
 notComment [] = True
@@ -67,7 +67,7 @@ check [(t, [])] = do
 
 check [(t, s)] = do
   putStrLn $ "Unexpected token on line "++(show $ line (head t))++": " ++ (concat (map lexeme t)) ++ s
-  putStrLn $ "Could not parse: "++(show s)
+  putStrLn $ "Lexical error: "++(show s)
   return False
 
 checkAst :: [([Statement], [Token])] -> IO Bool
@@ -78,7 +78,7 @@ checkAst [(t, [])] = do
   return True
 
 checkAst [(t, s)] = do
-  putStrLn $ "Could not parse: "++(show $ head s)
+  putStrLn $ "Syntax error: "++(show $ head s)
   return False
 
 

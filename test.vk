@@ -13,7 +13,6 @@ Print myString
 
 
 -- arithmetic
-
 intPlus = myInt + 20
 floatPlus = myFloat + 20.0
 stringPlus = myString + ", and others"
@@ -22,6 +21,11 @@ multiplyNumbers = myFloat * myInt
 x = 20*30/2 + 10.0 * (30 + 2)
 Print x
 
+Print "over"
+b=10
+Print (add 1 2 3)
+Print "under"
+Print a
 -- or the syntactic sugar number[x]
 ms = 0.001
 time = 1[ms]
@@ -33,7 +37,7 @@ Print 10.5 + 10.5
 Print "--------------------------"
 a = 10
 Print ""
-Print "a = "+a
+Print "a= "+10+", b="+20
 Print ""
 If True {
     Print "a was less than 5"
@@ -41,9 +45,6 @@ If True {
     Print "a was greater than 5... It was "+ a
 }
 Print "End of program"
-
-
-
 
 
 
