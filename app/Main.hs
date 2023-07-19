@@ -24,7 +24,7 @@ interpretFile filePath = do
   isValid <- allM check lexedLines
   if isValid
     then do
-      let tokenStream = concat ((map getTokens) lexedLines)
+      let tokenStream = concat (filter (notComment) $ (map getTokens) lexedLines)
       let ast = runParse tokenStream
       isValidAst <- checkAst ast
       if isValidAst
@@ -35,6 +35,10 @@ interpretFile filePath = do
           print (errors finalState)
         else putStrLn "Syntax error"
     else putStrLn "Unexpected token"
+
+notComment :: [Token] -> Bool
+notComment [] = True
+notComment (t:tokens) = (symbol t) /= SMinusMinus
 
 allM :: Monad m => (a -> m Bool) -> [a] -> m Bool
 allM p = foldM (\acc x -> if acc then p x else return False) True

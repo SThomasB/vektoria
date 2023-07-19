@@ -72,6 +72,12 @@ evaluate (Binary SubSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
 -- Multiply
 evaluate (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EInt (left * right)
+evaluate (Binary Multiply (ElemExpr (EFloat left)) (ElemExpr (EInt right))) =
+  EFloat (left * (fromIntegral right))
+evaluate (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EFloat right))) =
+  EFloat ((fromIntegral left) * right)
+evaluate (Binary Multiply (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+  EFloat (left * right)
 -- Divide
 evaluate (Binary Divide (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   EFloat (left / right)
@@ -83,8 +89,12 @@ evaluate (Binary Minus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
 -- Plus
 evaluate (Binary Plus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
   EInt (left + right)
+evaluate (Binary Plus (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+  EFloat (left + right)
 evaluate (Binary Plus (ElemExpr (EString left)) (ElemExpr (EString right))) =
   EString (left ++ right)
+evaluate (Binary Plus (ElemExpr left) (ElemExpr right)) =
+  EString ((showElement left) ++ (showElement right))
 evaluate (Binary op (ElemExpr left) (ElemExpr right)) =
   evalError op left right
 evaluate (Binary op left right) =

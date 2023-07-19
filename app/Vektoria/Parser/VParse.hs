@@ -86,20 +86,26 @@ weakStatement = do
   return $ Weak expr
 
 expression :: Parser [Token] Expression
-expression =
-  binaryExpression
-    [ Plus
-    , Minus
-    , Greater
-    , Less
-    , SubSet
-    , SuperSet
-    , Equals
-    , Or
-    , And
-    , NotEquals
-    ]
-    term
+expression = do
+  left <- factor
+  symbolSatisfy (==SLeftBracket)
+  right <- expression
+  symbolSatisfy (==SRightBracket)
+  return $ Binary Multiply left right
+  <|> do
+    binaryExpression
+      [ Plus
+      , Minus
+      , Greater
+      , Less
+      , SubSet
+      , SuperSet
+      , Equals
+      , Or
+      , And
+      , NotEquals
+      ]
+      term
 
 binaryExpression ::
      [Operator] -> Parser [Token] Expression -> Parser [Token] Expression

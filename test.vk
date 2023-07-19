@@ -1,42 +1,52 @@
 
+-- this is a comment
 
-a = "hello"
-b = "world"
-Print a+" "+b
-y = 10
-z = 33
-x = (y + z)/z
-x2 = x+z+y
-x3 = ((x+z+y)/(x2)) * 10
-p = x2>x3
-Print p
-Print x2
-Print x3
-Print "-------------control flow & clauses-------------"
-If 10 > x {
-   Print "f is"
-   f = 10
-   Print f
-   Print "g is"
-   g = 15
-   Print g
-   Print "f+g"
-   Print f+g
+-- assignment
+
+myInt = 10
+myFloat = 10.0
+myString = "Hello world"
+
+-- displaying output
+
+Print myString
+
+
+-- arithmetic
+
+intPlus = myInt + 20
+floatPlus = myFloat + 20.0
+stringPlus = myString + ", and others"
+stringPlusValue = myInt + " + " + 20 + " = " + intPlus
+multiplyNumbers = myFloat * myInt
+x = 20*30/2 + 10.0 * (30 + 2)
+Print x
+
+-- or the syntactic sugar number[x]
+ms = 0.001
+time = 1[ms]
+Print time
+Print multiplyNumbers
+Print stringPlus
+Print stringPlusValue
+Print 10.5 + 10.5
+Print "--------------------------"
+a = 10
+Print ""
+Print "a = "+a
+Print ""
+If True {
+    Print "a was less than 5"
+} Else {
+    Print "a was greater than 5... It was "+ a
 }
-If p==False {
-    Print "Not good"
-} Else Print "Else clause fired"
+Print "End of program"
 
-Print "f should not exist in this scope"
-Print f
 
-If False {
-Print "Error on line 32; since in a guarded clause"
-} Else If False { Print "Error on line 33; since in a guarded clause"} Else {
-    Print "Success on line 34; this should execute"
-}
 
-Print "---------------Program terminated---------------------"
+
+
+
 
 
 

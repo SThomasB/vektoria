@@ -35,8 +35,10 @@ executable vektoria
                 , Vektoria.Lib.Data.Token
                 , Vektoria.Lib.Data.Statement
                 , Vektoria.Lib.ParsingGenerics
+                , Vektoria.Interpreter.Evaluator
     build-depends:    base ^>=4.16.4.0
                     , text
                     , unordered-containers
+                    , mtl
     hs-source-dirs:   app
     default-language: Haskell2010

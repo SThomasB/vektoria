@@ -11,10 +11,13 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ leftArrowToken lineNr)
     <|> (ignoreSpace $ ifToken lineNr)
     <|> (ignoreSpace $ elseToken lineNr)
+    <|> (ignoreSpace $ minusMinusToken lineNr)
     <|> (ignoreSpace $ printToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
     <|> (ignoreSpace $ falseToken lineNr)
     <|> stringToken lineNr
+    <|> (ignoreSpace $ leftBracketToken lineNr)
+    <|> (ignoreSpace $ rightBracketToken lineNr)
     <|> (ignoreSpace $ floatToken lineNr)
     <|> (ignoreSpace $ intToken lineNr)
     <|> (ignoreSpace $ barBarToken lineNr)
@@ -160,7 +163,7 @@ elseToken lineNr = do
 stringToken :: Int -> Lexer
 stringToken line = do
     first <- glyph '"'
-    middle <- some $ charSatisfy (/='"')
+    middle <- many $ charSatisfy (/='"')
     last <- glyph '"'
     return $ Token SString line ((first:middle)++[last])
 
