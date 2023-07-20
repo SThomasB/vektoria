@@ -31,8 +31,9 @@ getEntity name = do
 addEntity :: String -> Entity -> Runtime ()
 addEntity name value = modify $ \s -> s { entities = HashMap.insert name value (entities s) }
 
+
 addError :: String -> Runtime ()
-addError message = modify $ \s -> s { errors = errors s ++ [RuntimeError message] }
+addError message = modify $ \s -> s { errors = (errors s) ++ [RuntimeError message] }
 
 
 initEntityMap :: EntityMap
@@ -46,3 +47,5 @@ entities `named` name = HashMap.lookup name entities
 newScope :: RuntimeState -> [(String, Entity)] -> RuntimeState
 newScope state newEntities =
     state { entities = HashMap.union (HashMap.fromList newEntities) (entities state)}
+
+

@@ -31,18 +31,19 @@ interpreter stmt = case stmt of
     expr' <- dereference expr
     addEntity name (Computable expr')
   Print (Ref ref) -> do
-    ref' <- dereference (Ref ref)
-    case ref' of
-      (ElemExpr (EError message)) -> addError (message)
-      expr -> do
-        result <- evaluate expr
+    result <- evaluate (Ref ref)
+    case result of
+      (EError message) -> do
+        addError (message)
+        liftIO $ putStrLn "An error occurred"
+      _ -> do
         liftIO $ putStrLn (showElement result)
-        addEntity ref (Computable (ElemExpr result))
-
   Print expr -> do
     result <- evaluate expr
     case result of
-      (EError message) -> addError (message)
+      (EError message) -> do
+        addError (message)
+        liftIO $ putStrLn ("An error occurred in: "++(show stmt))
       (_) -> liftIO $ putStrLn (showElement result)
   Weak expr -> do
     expr'  <- dereference expr

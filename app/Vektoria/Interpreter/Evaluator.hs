@@ -14,7 +14,7 @@ isSubstring needle haystack = T.isInfixOf (T.pack needle) (T.pack haystack)
 
 evalError :: Operator -> Element -> Element -> Runtime Element
 evalError op e1 e2 =
-  return $ EError ((show e1) ++ " " ++ (show op) ++ " " ++ (show e2) ++ " is undefined")
+  return $ EError ("("++(show e1) ++ ") " ++ (show op) ++ " (" ++ (show e2) ++") "++ " is undefined")
 
 
 evalOpposite :: Operator -> Operator -> Expression -> Expression -> Runtime Element
@@ -81,8 +81,12 @@ evaluate :: Expression -> Runtime Element
 evaluate (Ref r) = do
   r' <- getEntity r
   case r' of
-    Just (Computable thing) -> evaluate thing
-    Just (Callable _ _) -> return $ EError "Can not evaluate callables"
+    Just (Computable thing) -> do
+      result <- evaluate thing
+      addEntity r (Computable (ElemExpr result))
+      return result
+    Just (Callable _ _) -> do
+      return $ EError ("Can not evaluate callable ("++r++")")
     Nothing -> return $ EError ("Reference error: "++r ++ " does not exist")
 
 evaluate (Call (Ref reference) args) = evaluateCall reference args
@@ -155,8 +159,14 @@ evaluate (Binary Plus (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
   return $ EFloat (left + right)
 evaluate (Binary Plus (ElemExpr (EString left)) (ElemExpr (EString right))) =
   return $ EString (left ++ right)
-evaluate (Binary Plus (ElemExpr left) (ElemExpr right)) =
-  return $ EString ((showElement left) ++ (showElement right))
+evaluate (Binary Plus (ElemExpr (EError left)) (ElemExpr right)) =
+  evalError Plus (EError left) right
+evaluate (Binary Plus (ElemExpr left) (ElemExpr (EError right))) =
+  evalError Plus (EError right) left
+evaluate (Binary Plus (ElemExpr (EString left)) (ElemExpr right)) =
+  return $ EString ((left) ++ (showElement right))
+evaluate (Binary Plus (ElemExpr (left)) (ElemExpr (EString right))) =
+  return $ EString ((showElement left) ++ (right))
 evaluate (Binary op (ElemExpr left) (ElemExpr right)) =
   evalError op left right
 evaluate (Binary op left right) = do

@@ -65,7 +65,14 @@ If (add x y 3) == 6
 Else
     Print "16: References as arguments = bad "
 
+If (1+3*(y+x))== 10
+    Print "17: variables in parenthesized factors = good"
+Else
+    Print "17: variables in parenthesized factors = bad"
+
+Print "18: should be error= "+(add + 1)
 Print "End of program"
+
 
 If True Print "hello" Else Print "yo"
 
