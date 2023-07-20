@@ -52,14 +52,10 @@ interpreter stmt = case stmt of
         liftIO $ putStrLn (showElement result)
         addEntity ref (Entity ref (ElemExpr result))
   Print expr -> do
-    expr' <- dereference expr
-    case expr' of
-      (ElemExpr (EError e)) -> addError (EError e)
-      _ -> do
-        result <- interpretEvaluation expr'
-        case result of
-          Nothing -> return ()
-          Just result' -> liftIO $ putStrLn (showElement result')
+    result <- evaluate expr
+    case result of
+      (EError _) -> addError (result)
+      (_) -> liftIO $ putStrLn (showElement result)
   Weak expr -> do
     expr'  <- dereference expr
     case expr' of
@@ -71,53 +67,6 @@ interpreter stmt = case stmt of
 
 
 
-evaluateArguments :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
-evaluateArguments bindings args = do
-  let boundArgs = zip bindings args
-  maybeResults <- mapM evaluateArg boundArgs
-  return (sequence maybeResults)
-  where
-    evaluateArg (binding, arg) = do
-      expr <- dereference arg
-      elem <- interpretEvaluation expr
-      case elem of
-        Nothing -> do
-          addError (EError "Error evaluating arguments")
-          return Nothing
-        Just elem -> return $ Just (binding, Entity binding (ElemExpr elem))
-
-
-interpretEvaluation :: Expression -> Runtime (Maybe Element)
-
-
-interpretEvaluation (Call (Ref ref) args) = do
-    ref' <- getEntity ref
-    case (ref') of
-      (Just (Callable bindings expr)) -> do
-        let arity = (length bindings)
-        let nrArgs = (length args)
-        if (arity == nrArgs)
-          then do
-            args' <- evaluateArguments bindings args
-            case args' of
-              Nothing -> return Nothing
-              Just validBindings -> do
-                oldState <- get
-                let functionScope = makeScope oldState validBindings
-                put functionScope
-                executableFunction <- dereference (expr)
-                maybeElem <- interpretEvaluation executableFunction
-                put oldState
-                return maybeElem
-          else return Nothing
-      _ -> return Nothing
-interpretEvaluation expr = do
-    result <- evaluate expr
-    case result of
-      (EError e) -> do
-        addError (EError $ e ++" in: "++(show expr))
-        return Nothing
-      _ -> return $ Just result
 
 interpretBlock :: Bool -> [Statement] -> Runtime ()
 interpretBlock commit statements = do

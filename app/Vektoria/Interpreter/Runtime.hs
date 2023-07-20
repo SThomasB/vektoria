@@ -1,4 +1,5 @@
-module Vektoria.Interpreter.Runtime where
+module Vektoria.Interpreter.Runtime (module Vektoria.Interpreter.Runtime,
+  module Control.Monad.State) where
 import Vektoria.Lib.Data.Statement
 import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap

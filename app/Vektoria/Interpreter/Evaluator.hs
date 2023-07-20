@@ -36,12 +36,56 @@ dereference (Binary op left right) = do
 dereference e = return e
 
 
+
+
+bindArguments :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
+bindArguments bindings args = do
+  let boundArgs = zip bindings args
+  maybeResults <- mapM evaluateArg boundArgs
+  return (sequence maybeResults)
+  where
+    evaluateArg (binding, arg) = do
+      elem <- evaluate arg
+      case elem of
+        (EError e) -> do
+          addError (EError $ "Error evaluating arguments "++e)
+          return Nothing
+        elem -> return $ Just (binding, Entity binding (ElemExpr elem))
+
+
+evaluateCall :: String -> [Expression] -> Runtime Element
+evaluateCall ref arguments = do
+    ref' <- getEntity ref
+    case (ref') of
+      (Just (Callable bindings expr)) -> do
+        let arity = (length bindings)
+        let nrArgs = (length arguments)
+        if (arity == nrArgs)
+          then do
+            arguments' <- bindArguments bindings arguments
+            case arguments' of
+              Nothing -> return $ EError "Argument error"
+              Just validBindings -> do
+                oldState <- get
+                let functionScope = makeScope oldState validBindings
+                put functionScope
+                result <- evaluate expr
+                put oldState
+                return result
+          else return $ EError ("Arity mismatch: expected "++(show arity)++", actual "++(show nrArgs))
+      _ -> return $ (EError $ "Reference error: "++ref++" does not exist")
+
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Element
-evaluate (Call (Ref r) args) = return $ EError "Can not evaluate"
-evaluate (ElemExpr expr) = return expr
-evaluate (Ref r) = return $ EError r
+evaluate (Ref r) = do
+  r' <- getEntity r
+  case r' of
+    Just (Entity name thing) -> evaluate thing
+    Just (Callable bindings thing) -> return $ EError "Can not evaluate callable"
+    Nothing -> return $ EError ("Reference error: "++r ++ " does not exist")
 
+evaluate (Call (Ref reference) args) = evaluateCall reference args
+evaluate (ElemExpr expr) = return expr
 -- comparisons
 -- And
 evaluate (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
