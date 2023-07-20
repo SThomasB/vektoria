@@ -10,6 +10,7 @@ data Expression
   | ElemExpr Element
   | Ref String
   | Call Expression [Expression]
+  | Tertiary Expression Expression Expression
   | Lambda Parameters Expression
 
 

@@ -23,4 +23,5 @@ showElement (EString v) = v
 showElement (EInt v) = show v
 showElement (EFloat v) = show v
 showElement (EError v) = v
+showElement (EBool v) = show v
 showElement _ = ""

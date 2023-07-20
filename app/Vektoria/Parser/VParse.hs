@@ -142,7 +142,19 @@ term :: Parser [Token] Expression
 term = binaryExpression [Multiply, Divide] factor
 
 factor :: Parser [Token] Expression
-factor = functionCall<|>literalExpr <|> parenExpr
+factor = tertiary <|> functionCall <|>literalExpr <|> parenExpr
+
+
+tertiary :: Parser [Token] Expression
+tertiary = do
+  symbolSatisfy (==SBar)
+  condition <- expression
+  symbolSatisfy (==SRightArrow)
+  left <- expression
+  symbolSatisfy (==SBar)
+  right <- expression
+  return $ Tertiary condition left right
+
 
 parenExpr :: Parser [Token] Expression
 parenExpr = do

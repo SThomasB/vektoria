@@ -29,7 +29,7 @@ dereference (Ref r) = do
   r' <- getEntity r
   case r' of
     Just (Computable thing) -> return thing
-    Just (Callable name thing) -> return thing
+    Just (Callable bindings thing) -> return thing
     Nothing -> return $ ElemExpr (EError (r ++ " does not exist"))
 dereference (Binary op left right) = do
   left' <- dereference left
@@ -46,6 +46,14 @@ createBindings parameters arguments = do
   maybeResults <- mapM evaluateBinding bindings
   return (sequence maybeResults)
   where
+    evaluateBinding (parameter, (Ref ref)) = do
+      maybeEntity <- getEntity ref
+      case maybeEntity of
+        (Just (Callable parameters arguments)) -> return $ Just (parameter, Callable parameters arguments)
+        (Just (Computable expression)) -> evaluateBinding (parameter, expression)
+        (Nothing) -> do
+          addError ("Reference error when evaluating arguments")
+          return $ Nothing
     evaluateBinding (parameter, argument) = do
       element <- evaluate argument
       case element of
@@ -98,6 +106,12 @@ evaluate (Ref r) = do
 
 evaluate (Call expression args) = evaluateCall expression args
 evaluate (ElemExpr expr) = return expr
+evaluate (Tertiary condition left right) = do
+  isTrue <- evaluate condition
+  case isTrue of
+    (EBool True) -> evaluate left
+    (EBool False) -> evaluate right
+    _ -> return isTrue
 -- comparisons
 -- And
 evaluate (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
