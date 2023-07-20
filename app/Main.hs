@@ -36,6 +36,7 @@ interpretFile filePath = do
           putStrLn "Accrued errors:"
           mapM print (zip [1..] (errors finalState))
           putStrLn "--------------------------"
+          print (finalState)
           return ()
         else return ()
     else return ()

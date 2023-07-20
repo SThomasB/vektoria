@@ -9,6 +9,7 @@ vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
     (ignoreSpace $ identifierToken lineNr)
     <|> (ignoreSpace $ leftArrowToken lineNr)
+    <|> (ignoreSpace $ rightArrowToken lineNr)
     <|> (ignoreSpace $ ifToken lineNr)
     <|> (ignoreSpace $ elseToken lineNr)
     <|> (ignoreSpace $ commaToken lineNr)
@@ -42,6 +43,7 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ leftParenToken lineNr)
     <|> (ignoreSpace $ rightParenToken lineNr)
     <|> (ignoreSpace $ barToken lineNr)
+
 
 identifierToken :: Int -> Lexer
 identifierToken line = do
@@ -129,6 +131,8 @@ slashEqualToken = parseGlyphsToken SSlashEqual "/="
 leftArrowToken :: Int -> Lexer
 leftArrowToken = parseGlyphsToken SLeftArrow "<-"
 
+rightArrowToken :: Int -> Lexer
+rightArrowToken = parseGlyphsToken SRightArrow "->"
 barBarToken :: Int -> Lexer
 barBarToken = parseGlyphsToken SBarBar "||"
 

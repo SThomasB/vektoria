@@ -29,6 +29,11 @@ interpreter stmt = case stmt of
   Block thisBlock -> interpretBlock False thisBlock
   (Assign name (Lambda parameters expression)) -> do
     addEntity name (Callable parameters expression)
+  (Assign name (Ref reference)) -> do
+    maybeEntity <- getEntity reference
+    case maybeEntity of
+      Just entity -> addEntity name entity
+      Nothing -> addError ("Reference error")
   (Assign name expression) -> do
     expression' <- dereference expression
     addEntity name (Computable expression')
