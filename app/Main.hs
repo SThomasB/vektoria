@@ -33,7 +33,9 @@ interpretFile filePath = do
           let statementStream = concat (map fst ast)
           (_, finalState) <- runStateT (interpret statementStream) initRuntime
           putStrLn ""
-          mapM print (errors finalState)
+          putStrLn "Accrued errors:"
+          mapM print (zip [1..] (errors finalState))
+          putStrLn "--------------------------"
           return ()
         else return ()
     else return ()

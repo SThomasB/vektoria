@@ -55,26 +55,33 @@ createBindings parameters arguments = do
         value -> return $ Just (parameter, Computable (ElemExpr value))
 
 
-evaluateCall :: String -> [Expression] -> Runtime Element
-evaluateCall reference arguments = do
+evaluateCall :: Expression -> [Expression] -> Runtime Element
+evaluateCall (Ref reference) arguments = do
     entity <- getEntity reference
     case (entity) of
-      (Just (Callable parameters expression)) -> do
-        let arity = (length parameters)
-        let argumentsLength = (length arguments)
-        if (arity == argumentsLength)
-          then do
-            bindings <- createBindings parameters arguments
-            case bindings of
-              Nothing -> return $ EError "Argument error"
-              Just validBindings -> do
-                preCallScope <- get
-                put $ newScope preCallScope validBindings
-                result <- evaluate expression
-                put preCallScope
-                return result
-          else return $ EError ("Arity mismatch: expected "++(show arity)++", actual "++(show argumentsLength))
+      (Just (Callable parameters expression)) -> evaluateCallable parameters arguments expression
       _ -> return $ (EError $ "Reference error: "++reference++" does not exist")
+
+evaluateCall (Lambda parameters expression) arguments = evaluateCallable parameters arguments expression
+
+
+evaluateCallable :: [String]->[Expression]->Expression->Runtime Element
+evaluateCallable parameters arguments expression = do
+    let arity = (length parameters)
+    let argumentsLength = (length arguments)
+    if (arity == argumentsLength)
+      then do
+        bindings <- createBindings parameters arguments
+        case bindings of
+          Nothing -> return $ EError "Argument error"
+          Just validBindings -> do
+            preCallScope <- get
+            put $ newScope preCallScope validBindings
+            result <- evaluate expression
+            put preCallScope
+            return result
+      else return $ EError ("Arity mismatch: "++"expected "++(show arity)++", actual "++(show argumentsLength))
+
 
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Element
@@ -89,7 +96,7 @@ evaluate (Ref r) = do
       return $ EError ("Can not evaluate callable ("++r++")")
     Nothing -> return $ EError ("Reference error: "++r ++ " does not exist")
 
-evaluate (Call (Ref reference) args) = evaluateCall reference args
+evaluate (Call expression args) = evaluateCall expression args
 evaluate (ElemExpr expr) = return expr
 -- comparisons
 -- And
