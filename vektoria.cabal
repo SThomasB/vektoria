@@ -34,6 +34,9 @@ executable vektoria
                 , Vektoria.Interpreter.VInterpret
                 , Vektoria.Lib.Data.Token
                 , Vektoria.Lib.Data.Statement
+                , Vektoria.Lib.Data.Expression
+                , Vektoria.Lib.Data.Element
+                , Vektoria.Lib.Data.Entity
                 , Vektoria.Lib.ParsingGenerics
                 , Vektoria.Interpreter.Evaluator
                 , Vektoria.Interpreter.Runtime

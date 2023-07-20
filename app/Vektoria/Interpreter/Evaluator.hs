@@ -1,7 +1,9 @@
 
-module Vektoria.Interpreter.Evaluator (evaluate) where
-import Vektoria.Lib.Data.Statement
+module Vektoria.Interpreter.Evaluator (evaluate, dereference) where
+import Vektoria.Lib.Data.Expression
 import Vektoria.Interpreter.Runtime
+import Vektoria.Lib.Data.Entity
+import Vektoria.Lib.Data.Element
 import qualified Data.Text as T
 
 
@@ -26,7 +28,7 @@ dereference :: Expression -> Runtime Expression
 dereference (Ref r) = do
   r' <- getEntity r
   case r' of
-    Just (Entity name thing) -> return thing
+    Just (Computable thing) -> return thing
     Just (Callable name thing) -> return thing
     Nothing -> return $ ElemExpr (EError (r ++ " does not exist"))
 dereference (Binary op left right) = do
@@ -38,50 +40,49 @@ dereference e = return e
 
 
 
-bindArguments :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
-bindArguments bindings args = do
-  let boundArgs = zip bindings args
-  maybeResults <- mapM evaluateArg boundArgs
+createBindings :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
+createBindings parameters arguments = do
+  let bindings = zip parameters arguments
+  maybeResults <- mapM evaluateBinding bindings
   return (sequence maybeResults)
   where
-    evaluateArg (binding, arg) = do
-      elem <- evaluate arg
-      case elem of
-        (EError e) -> do
-          addError (EError $ "Error evaluating arguments "++e)
+    evaluateBinding (parameter, argument) = do
+      element <- evaluate argument
+      case element of
+        (EError message) -> do
+          addError ("Error evaluating arguments "++message)
           return Nothing
-        elem -> return $ Just (binding, Entity binding (ElemExpr elem))
+        value -> return $ Just (parameter, Computable (ElemExpr value))
 
 
 evaluateCall :: String -> [Expression] -> Runtime Element
-evaluateCall ref arguments = do
-    ref' <- getEntity ref
-    case (ref') of
-      (Just (Callable bindings expr)) -> do
-        let arity = (length bindings)
-        let nrArgs = (length arguments)
-        if (arity == nrArgs)
+evaluateCall reference arguments = do
+    entity <- getEntity reference
+    case (entity) of
+      (Just (Callable parameters expression)) -> do
+        let arity = (length parameters)
+        let argumentsLength = (length arguments)
+        if (arity == argumentsLength)
           then do
-            arguments' <- bindArguments bindings arguments
-            case arguments' of
+            bindings <- createBindings parameters arguments
+            case bindings of
               Nothing -> return $ EError "Argument error"
               Just validBindings -> do
-                oldState <- get
-                let functionScope = makeScope oldState validBindings
-                put functionScope
-                result <- evaluate expr
-                put oldState
+                preCallScope <- get
+                put $ newScope preCallScope validBindings
+                result <- evaluate expression
+                put preCallScope
                 return result
-          else return $ EError ("Arity mismatch: expected "++(show arity)++", actual "++(show nrArgs))
-      _ -> return $ (EError $ "Reference error: "++ref++" does not exist")
+          else return $ EError ("Arity mismatch: expected "++(show arity)++", actual "++(show argumentsLength))
+      _ -> return $ (EError $ "Reference error: "++reference++" does not exist")
 
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Element
 evaluate (Ref r) = do
   r' <- getEntity r
   case r' of
-    Just (Entity name thing) -> evaluate thing
-    Just (Callable bindings thing) -> return $ EError "Can not evaluate callable"
+    Just (Computable thing) -> evaluate thing
+    Just (Callable _ _) -> return $ EError "Can not evaluate callables"
     Nothing -> return $ EError ("Reference error: "++r ++ " does not exist")
 
 evaluate (Call (Ref reference) args) = evaluateCall reference args
