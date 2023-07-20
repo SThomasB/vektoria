@@ -27,9 +27,11 @@ interpreter stmt = case stmt of
         EBool False -> interpreter elseBlock
         _ -> addError ("Expected a boolean in if condition")
   Block thisBlock -> interpretBlock False thisBlock
-  (Assign name expr) -> do
-    expr' <- dereference expr
-    addEntity name (Computable expr')
+  (Assign name (Lambda parameters expression)) -> do
+    addEntity name (Callable parameters expression)
+  (Assign name expression) -> do
+    expression' <- dereference expression
+    addEntity name (Computable expression')
   Print (Ref ref) -> do
     result <- evaluate (Ref ref)
     case result of

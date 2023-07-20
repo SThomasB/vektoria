@@ -63,7 +63,7 @@ assignStatement :: Parser [Token] Statement
 assignStatement = do
   identifier <- symbolSatisfy (== SIdentifier)
   symbolSatisfy (== SEqual)
-  expr <- expression
+  expr <- expression <|> lambda
   let entityName = lexeme identifier
   return (Assign entityName expr)
 
@@ -89,9 +89,25 @@ timesBracket = do
 
 functionCall :: Parser [Token] Expression
 functionCall = do
-  ref <- reference
+  symbolSatisfy (==SLeftParen)
+  callee <- lambda <|> reference
   args <- some expression
-  return $ Call ref args
+  symbolSatisfy (==SRightParen)
+  case callee of
+    (Lambda parameters expression) -> return $ Call (Lambda parameters expression) args
+    (Ref ref) -> return $ Call (Ref ref) args
+
+
+lambda :: Parser [Token] Expression
+lambda = do
+  symbolSatisfy (==SLeftParen)
+  parameters <- many $ symbolSatisfy (==SIdentifier)
+  let parameters' = map lexeme parameters
+  symbolSatisfy (==SComma)
+  expression <- expression
+  symbolSatisfy (==SRightParen)
+  return $ Lambda parameters' expression
+
 
 expression :: Parser [Token] Expression
 expression = do
@@ -110,6 +126,7 @@ expression = do
     ]
     term
 
+
 binaryExpression ::
      [Operator] -> Parser [Token] Expression -> Parser [Token] Expression
 binaryExpression operators operand = do
@@ -125,12 +142,12 @@ term :: Parser [Token] Expression
 term = binaryExpression [Multiply, Divide] factor
 
 factor :: Parser [Token] Expression
-factor = literalExpr <|> parenExpr
+factor = functionCall<|>literalExpr <|> parenExpr
 
 parenExpr :: Parser [Token] Expression
 parenExpr = do
   symbolSatisfy (== SLeftParen)
-  expr <- functionCall <|> expression
+  expr <- expression
   symbolSatisfy (== SRightParen)
   return expr
 

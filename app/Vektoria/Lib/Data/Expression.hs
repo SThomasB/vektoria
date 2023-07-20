@@ -3,11 +3,14 @@ import Vektoria.Lib.Data.Element
 
 
 
+type Parameters = [String]
+
 data Expression
   = Binary Operator Expression Expression
   | ElemExpr Element
   | Ref String
   | Call Expression [Expression]
+  | Lambda Parameters Expression
 
 
 instance Show Expression where
@@ -17,6 +20,7 @@ instance Show Expression where
     show op ++ ", " ++ show expr2 ++ ", " ++ show expr3 ++ ")"
   show (Ref r) = "Reference "++r
   show (Call ref args) = "Call "++(show ref)++" "++(show args)
+
 
 
 data Operator

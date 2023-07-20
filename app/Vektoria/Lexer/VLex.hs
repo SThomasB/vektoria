@@ -11,6 +11,7 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ leftArrowToken lineNr)
     <|> (ignoreSpace $ ifToken lineNr)
     <|> (ignoreSpace $ elseToken lineNr)
+    <|> (ignoreSpace $ commaToken lineNr)
     <|> (ignoreSpace $ minusMinusToken lineNr)
     <|> (ignoreSpace $ printToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
@@ -92,6 +93,9 @@ barToken = parseGlyphToken SBar '|'
 
 equalToken :: Int -> Lexer
 equalToken = parseGlyphToken SEqual '='
+
+commaToken :: Int -> Lexer
+commaToken = parseGlyphToken SComma ','
 
 minusToken :: Int -> Lexer
 minusToken = parseGlyphToken SMinus '-'
