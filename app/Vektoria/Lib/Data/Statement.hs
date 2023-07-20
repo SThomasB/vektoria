@@ -12,13 +12,19 @@ data Statement
 data Entity = Entity
   { name :: String
   , thing :: Expression
+  } | Callable {
+    bindings :: [String]
+  , thing :: Expression
   }
   deriving Show
+
 
 data Expression
   = Binary Operator Expression Expression
   | ElemExpr Element
   | Ref String
+  | Call Expression [Expression]
+
 
 instance Show Expression where
   show (ElemExpr element) = "Element: " ++ show element
@@ -26,6 +32,7 @@ instance Show Expression where
     "Binary Expression: (" ++
     show op ++ ", " ++ show expr2 ++ ", " ++ show expr3 ++ ")"
   show (Ref r) = "Reference "++r
+  show (Call ref args) = "Call "++(show ref)++" "++(show args)
 
 data Operator
   = Plus
@@ -50,5 +57,19 @@ data Element
   | EBool Bool
   | EVoid
   | EError String
-  deriving (Show, Eq)
+  deriving (Eq)
+instance Show Element where
+  show (EInt _) = "Integer"
+  show (EString _) = "String"
+  show (EFloat _) = "Float"
+  show (EBool _) = "Bool"
+  show (EVoid) = "Void"
+  show (EError e) = "Error: "++e
+
+showElement :: Element -> String
+showElement (EString v) = v
+showElement (EInt v) = show v
+showElement (EFloat v) = show v
+showElement (EError v) = v
+showElement _ = ""
 

@@ -1,116 +1,197 @@
 module Vektoria.Interpreter.VInterpret
-  ( evalExpr, interpretAssign, VState, initState, from, dereference)
+  ( interpret, interpreter, errors, EntityMap, RuntimeState, initRuntime, from, dereference)
   where
-
+import Vektoria.Interpreter.Evaluator
 import qualified Data.Text as T
 import Vektoria.Lib.Data.Token
 import Vektoria.Lib.Data.Statement
 import qualified Data.HashMap.Strict as HashMap
+import Control.Monad (foldM)
+import Control.Monad.State
+import System.CPUTime
 
-type VState = HashMap.HashMap String Entity
 
-initState :: VState
-initState = HashMap.empty
+type EntityMap = HashMap.HashMap String Entity
 
-interpretAssign :: VState -> Statement -> VState
-interpretAssign state (Assign e) = HashMap.insert (name e) Entity {name=(name e), thing=(dereference state (thing e))} state
+named :: EntityMap -> String -> (Maybe Entity)
+entities `named` name = HashMap.lookup name entities
 
-from :: String -> VState -> Expression
+
+
+
+
+
+
+initEntityMap :: EntityMap
+initEntityMap = HashMap.fromList [
+  ("add", Callable ["a", "b", "c"] (Binary Plus (Ref "a") (Binary Plus (Ref "b") (Ref "c"))))]
+
+
+getSysTime :: [Element] -> IO Expression
+getSysTime [] = do
+  cpuTimeNano <- getCPUTime
+  return $ ElemExpr (EFloat $ fromIntegral cpuTimeNano)
+getSystem [s] = return $ ElemExpr (EError "getSysTime takes zero arguments")
+
+
+
+-- what is a function?
+-- Is it a reference to a block?
+-- An Entity is then not a named expression
+-- But a named expression | statement
+
+
+data RuntimeState = RuntimeState
+  { entities :: EntityMap
+  , errors :: [Element]
+  } deriving (Show)
+
+
+initRuntime::RuntimeState
+initRuntime = RuntimeState {entities=initEntityMap, errors=[]}
+
+type Runtime a = StateT RuntimeState IO a
+
+getEntity :: String -> Runtime (Maybe Entity)
+getEntity name = do
+    entities <- gets entities
+    return $ entities `named` name
+
+
+addEntity :: String -> Entity -> Runtime ()
+addEntity name value = modify $ \s -> s { entities = HashMap.insert name value (entities s) }
+
+addError :: Element -> Runtime ()
+addError err = modify $ \s -> s { errors = errors s ++ [err] }
+
+
+interpret :: [Statement] -> Runtime ()
+interpret = mapM_ interpreter
+
+
+interpreter :: Statement -> Runtime ()
+interpreter stmt = case stmt of
+  IfElse condition thenBlock elseBlock -> do
+    condition' <- dereference condition
+    case condition' of
+      ElemExpr (EError e) -> addError (EError e)
+      _ -> case evaluate condition' of
+        EBool True -> interpreter thenBlock
+        EBool False -> interpreter elseBlock
+        _ -> addError (EError "Expected a boolean in if condition")
+  Block thisBlock -> interpretBlock False thisBlock
+  Assign (Entity name expr) -> do
+    expr' <- dereference expr
+    addEntity name (Entity name expr')
+  Print (Ref ref) -> do
+    ref' <- dereference (Ref ref)
+    case ref' of
+      (ElemExpr (EError e)) -> addError (EError e)
+      expr -> do
+        let result = evaluate expr
+        liftIO $ putStrLn (showElement result)
+        addEntity ref (Entity ref (ElemExpr result))
+  Print expr -> do
+    expr' <- dereference expr
+    case expr' of
+      (ElemExpr (EError e)) -> addError (EError e)
+      _ -> do
+        result <- interpretEvaluation expr'
+        case result of
+          Nothing -> return ()
+          Just result' -> liftIO $ putStrLn (showElement result')
+  Weak expr -> do
+    expr'  <- dereference expr
+    case expr' of
+      (ElemExpr (EError e)) -> addError (EError e)
+      e -> liftIO $ print (showElement (evaluate expr'))
+
+
+makeScope :: RuntimeState -> [(String, Entity)] -> RuntimeState
+makeScope state newEntities =
+    state { entities = HashMap.union (HashMap.fromList newEntities) (entities state)}
+
+
+evaluateArguments :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
+evaluateArguments bindings args = do
+  let boundArgs = zip bindings args
+  maybeResults <- mapM evaluateArg boundArgs
+  return (sequence maybeResults)
+  where
+    evaluateArg (binding, arg) = do
+      expr <- dereference arg
+      elem <- interpretEvaluation expr
+      case elem of
+        Nothing -> do
+          addError (EError "Error evaluating arguments")
+          return Nothing
+        Just elem -> return $ Just (binding, Entity binding (ElemExpr elem))
+
+
+interpretEvaluation :: Expression -> Runtime (Maybe Element)
+
+
+interpretEvaluation (Call (Ref ref) args) = do
+    ref' <- getEntity ref
+    case (ref') of
+      (Just (Callable bindings expr)) -> do
+        let arity = (length bindings)
+        let nrArgs = (length args)
+        if (arity == nrArgs)
+          then do
+            args' <- evaluateArguments bindings args
+            case args' of
+              Nothing -> return Nothing
+              Just validBindings -> do
+                oldState <- get
+                let functionScope = makeScope oldState validBindings
+                put functionScope
+                executableFunction <- dereference (expr)
+                maybeElem <- interpretEvaluation executableFunction
+                put oldState
+                return maybeElem
+          else return Nothing
+      _ -> return Nothing
+interpretEvaluation expr = do
+    let result = evaluate expr
+    case result of
+      (EError e) -> do
+        addError (EError $ e ++" in: "++(show expr))
+        return Nothing
+      _ -> return $ Just result
+
+interpretBlock :: Bool -> [Statement] -> Runtime ()
+interpretBlock commit statements = do
+  oldState <- get
+  interpret statements
+  if commit
+    then return ()
+    else put oldState
+
+dereference :: Expression -> Runtime Expression
+dereference (Ref r) = do
+  r' <- getEntity r
+  case r' of
+    Just (Entity name thing) -> return thing
+    Just (Callable name thing) -> return thing
+    Nothing -> return $ ElemExpr (EError (r ++ " does not exist"))
+dereference (Binary op left right) = do
+  left' <- dereference left
+  right' <- dereference right
+  return $ Binary op left' right'
+dereference e = return e
+
+
+from :: String -> EntityMap -> Expression
 a `from` s = case HashMap.lookup a s of
   Just e -> thing e
   Nothing -> ElemExpr (EError (a ++ " does not exist"))
 
--- pack converts string to text (not lazy)
-isSubstring :: String -> String -> Bool
-isSubstring needle haystack = T.isInfixOf (T.pack needle) (T.pack haystack)
 
 
-evalError :: Operator -> Element -> Element -> Element
-evalError op e1 e2 =
-  EError ((show e1) ++ " " ++ (show op) ++ " " ++ (show e2) ++ " is undefined")
-
-evalOpposite :: Operator -> Operator -> Expression -> Expression -> Element
-evalOpposite op opposite (ElemExpr left) (ElemExpr right) =
-  case (evalExpr (Binary opposite (ElemExpr left) (ElemExpr right))) of
-    (EBool b) -> EBool (not b)
-    _ -> (evalError op left right)
+--interpretAssign :: EntityMap -> Statement -> EntityMap
+--interpretAssign state (Assign e) = HashMap.insert (name e) Entity {name=(name e), thing=(dereference state (thing e))} state
 
 
-dereference :: VState -> Expression -> Expression
-dereference state (Ref r) = r `from` state
-dereference state (Binary op left right) = (Binary op (dereference state left) (dereference state right))
-dereference _ e = e
 
 
--- Evaluate expressions
-evalExpr :: Expression -> Element
-evalExpr (ElemExpr expr) = expr
-evalExpr (Ref r) = EError r
--- comparisons
--- And
-evalExpr (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
-  EBool (left && right)
-evalExpr (Binary Or (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
-  EBool (left || right)
--- Equals
-evalExpr (Binary Equals (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EBool (left == right)
-evalExpr (Binary Equals (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
-  EBool (left == right)
-evalExpr (Binary Equals (ElemExpr (EString left)) (ElemExpr (EString right))) =
-  EBool (left == right)
-evalExpr (Binary Equals (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
-  EBool (left == right)
--- NotEquals
-evalExpr (Binary NotEquals (ElemExpr left) (ElemExpr right)) =
-  evalOpposite NotEquals Equals (ElemExpr left) (ElemExpr right)
--- Greater
-evalExpr (Binary Greater (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EBool (left > right)
-evalExpr (Binary Greater (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
-  EBool (left > right)
-evalExpr (Binary Greater (ElemExpr (EString left)) (ElemExpr (EString right))) =
-  EBool (left /= right && (isSubstring right left))
--- Less
-evalExpr (Binary Less (ElemExpr (EString left)) (ElemExpr (EString right))) =
-  EBool (left /= right && (isSubstring left right))
-evalExpr (Binary Less (ElemExpr left) (ElemExpr right)) =
-  evalOpposite Less Greater (ElemExpr left) (ElemExpr right)
--- Superset
-evalExpr (Binary SuperSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EBool (left >= right)
-evalExpr (Binary SuperSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
-  EBool (left >= right)
-evalExpr (Binary SuperSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
-  EBool (isSubstring right left)
--- Subset
-evalExpr (Binary SubSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EBool (left <= right)
-evalExpr (Binary SubSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
-  EBool (left <= right)
-evalExpr (Binary SubSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
-  EBool (isSubstring left right)
--- Multiply
-evalExpr (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EInt (left * right)
--- Divide
-evalExpr (Binary Divide (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
-  EFloat (left / right)
-evalExpr (Binary Divide (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EInt (div left right)
--- Minus
-evalExpr (Binary Minus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EInt (left - right)
--- Plus
-evalExpr (Binary Plus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
-  EInt (left + right)
-evalExpr (Binary Plus (ElemExpr (EString left)) (ElemExpr (EString right))) =
-  EString (left ++ right)
-evalExpr (Binary op (ElemExpr left) (ElemExpr right)) =
-  evalError op left right
-evalExpr (Binary op left right) =
-  evalExpr
-    (Binary
-       op
-       (ElemExpr (evalExpr left))
-       (ElemExpr (evalExpr right)))

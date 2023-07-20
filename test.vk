@@ -1,42 +1,52 @@
 
+-- this is a comment
 
-a = "hello"
-b = "world"
-Print a+" "+b
-y = 10
-z = 33
-x = (y + z)/z
-x2 = x+z+y
-x3 = ((x+z+y)/(x2)) * 10
-p = x2>x3
-Print p
-Print x2
-Print x3
-Print "-------------control flow & clauses-------------"
-If 10 > x {
-   Print "f is"
-   f = 10
-   Print f
-   Print "g is"
-   g = 15
-   Print g
-   Print "f+g"
-   Print f+g
+-- assignment
+
+myInt = 10
+Print "1: "+myInt
+myFloat = 10.0
+Print "2: "+myFloat
+myString = "Hello world"
+Print "3: "+myString
+
+
+-- arithmetic
+intPlus = myInt + 20
+Print "4: "+intPlus
+floatPlus = myFloat + 20.0
+Print "5: "+floatPlus
+stringPlus = myString + ", and others"
+Print "6: "+floatPlus
+stringPlusValue = myInt + " + " + 20 + " = " + intPlus
+Print "7: "+stringPlusValue
+multiplyNumbers = myFloat * myInt
+Print "8: "+multiplyNumbers
+x = 20*30/2 + 10.0 * (30 + 2)
+Print "9: "+x
+
+b=10
+functionResult = (add 20 10 200)
+Print "10 (function call): "+ functionResult
+
+-- or the syntactic sugar number[x]
+ms = 0.001
+time = 1[ms]
+Print "11: "+time
+If True {
+    Print "12: entered if clause"
+} Else {
+    Print "error chose the worng clause"
 }
-If p==False {
-    Print "Not good"
-} Else Print "Else clause fired"
-
-Print "f should not exist in this scope"
-Print f
-
 If False {
-Print "Error on line 32; since in a guarded clause"
-} Else If False { Print "Error on line 33; since in a guarded clause"} Else {
-    Print "Success on line 34; this should execute"
+    Print "error chose the wrong clause"
+} Else {
+    Print "13: entered else clause"
 }
+Print "End of program"
 
-Print "---------------Program terminated---------------------"
+
+
 
 
 

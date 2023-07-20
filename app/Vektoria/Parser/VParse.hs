@@ -2,9 +2,10 @@ module Vektoria.Parser.VParse
   ( vektoriaParse
   , run
   ) where
+
 import Data.Char
-import Vektoria.Lib.Data.Token
 import Vektoria.Lib.Data.Statement
+import Vektoria.Lib.Data.Token
 import Vektoria.Lib.ParsingGenerics
 
 getOperator :: Token -> Operator
@@ -29,67 +30,71 @@ getOperator token =
 -- factor ::= (expr) | int
 vektoriaParse :: Parser [Token] Statement
 vektoriaParse = do
-  statement
-  <|>block
+  statement <|> block
 
 block :: Parser [Token] Statement
 block = do
-  symbolSatisfy (==SLeftBrace)
+  symbolSatisfy (== SLeftBrace)
   result <- (many vektoriaParse)
-  symbolSatisfy (==SRightBrace)
+  symbolSatisfy (== SRightBrace)
   return $ Block result
 
 statement :: Parser [Token] Statement
-statement = do assignStatement <|> ifElseStatement <|> printStatement <|> weakStatement
-
+statement = do
+  assignStatement <|> ifElseStatement <|> printStatement
 
 ifElseStatement :: Parser [Token] Statement
-ifElseStatement = do
-    symbolSatisfy (==SIf)
+ifElseStatement =
+  do symbolSatisfy (== SIf)
+     condition <- expression
+     thenBlock <- do block <|> printStatement
+     symbolSatisfy (== SElse)
+     elseBlock <- do block <|> ifElseStatement <|> printStatement
+     return $ IfElse condition thenBlock elseBlock
+     <|> do
+    symbolSatisfy (== SIf)
     condition <- expression
-    thenBlock <- do
-        block
-        <|> weakStatement
-        <|> printStatement
-    symbolSatisfy (==SElse)
-    elseBlock <- do
-        block
-        <|> ifElseStatement
-        <|> weakStatement
-        <|> printStatement
-    return $ IfElse condition thenBlock elseBlock
-    <|> do
-        symbolSatisfy (==SIf)
-        condition <- expression
-        thenBlock <- do
-          block
-          <|> weakStatement
-          <|> printStatement
-        return $ IfElse condition thenBlock (Block [])
-
+    thenBlock <- do block <|> printStatement
+    return $ IfElse condition thenBlock (Block [])
 
 assignStatement :: Parser [Token] Statement
 assignStatement = do
-  identifier <- symbolSatisfy (==SIdentifier)
-  symbolSatisfy (==SEqual)
+  identifier <- symbolSatisfy (== SIdentifier)
+  symbolSatisfy (== SEqual)
   expr <- expression
   let entityName = lexeme identifier
   return (Assign $ Entity entityName expr)
 
 printStatement :: Parser [Token] Statement
 printStatement = do
-  symbolSatisfy (==SPrint)
+  symbolSatisfy (== SPrint)
   expr <- expression
   return (Print $ expr)
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
+  symbolSatisfy (== SLeftArrow)
   expr <- expression
   return $ Weak expr
 
+timesBracket :: Parser [Token] Expression
+timesBracket = do
+  left <- factor
+  symbolSatisfy (== SLeftBracket)
+  right <- expression
+  symbolSatisfy (== SRightBracket)
+  return $ Binary Multiply left right
+
+functionCall :: Parser [Token] Expression
+functionCall = do
+  ref <- reference
+  args <- some expression
+  return $ Call ref args
+
 expression :: Parser [Token] Expression
-expression =
-  binaryExpression
+expression = do
+  timesBracket
+  <|> binaryExpression
     [ Plus
     , Minus
     , Greater
@@ -114,7 +119,6 @@ binaryExpression operators operand = do
       return (op, right)
   return $ foldl (\acc (op, expr) -> Binary op acc expr) left rest
 
-
 term :: Parser [Token] Expression
 term = binaryExpression [Multiply, Divide] factor
 
@@ -123,42 +127,45 @@ factor = literalExpr <|> parenExpr
 
 parenExpr :: Parser [Token] Expression
 parenExpr = do
-  symbolSatisfy (==SLeftParen)
-  expr <- expression
-  symbolSatisfy (==SRightParen)
+  symbolSatisfy (== SLeftParen)
+  expr <- functionCall <|> expression
+  symbolSatisfy (== SRightParen)
   return expr
 
+reference :: Parser [Token] Expression
+reference = do
+  token <- symbolSatisfy (== SIdentifier)
+  return $ Ref (lexeme token)
 
 literalExpr :: Parser [Token] Expression
 literalExpr = do
-  token <- symbolSatisfy (==SIdentifier)
-  return $ Ref (lexeme token)
+  reference
   <|> do
-    token <- symbolSatisfy (==SString)
+    token <- symbolSatisfy (== SString)
     return $ ElemExpr (EString ((init . tail) $ lexeme token))
   <|> do
-    token <- symbolSatisfy (==SInt)
+    token <- symbolSatisfy (== SInt)
     return $ ElemExpr (EInt (read $ lexeme token))
   <|> do
-    token <- symbolSatisfy (==SFloat)
+    token <- symbolSatisfy (== SFloat)
     return $ ElemExpr (EFloat (read $ lexeme token))
   <|> do
-    token <- symbolSatisfy (==SFalse)
+    token <- symbolSatisfy (== SFalse)
     return $ ElemExpr (EBool False)
   <|> do
-    token <- symbolSatisfy (==STrue)
+    token <- symbolSatisfy (== STrue)
     return $ ElemExpr (EBool True)
-
 
 operatorSatisfy :: (Operator -> Bool) -> Parser [Token] Operator
 operatorSatisfy predicate = do
   token <- next
   let op = getOperator token
-  if (predicate op) then return op else empty
+  if (predicate op)
+    then return op
+    else empty
 
-symbolSatisfy :: (Symbol->Bool) -> Parser [Token] Token
+symbolSatisfy :: (Symbol -> Bool) -> Parser [Token] Token
 symbolSatisfy = satisfy symbol
 
 isOneOf :: Eq a => [a] -> (a -> Bool)
 isOneOf = flip elem
-
