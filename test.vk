@@ -4,45 +4,44 @@
 -- assignment
 
 myInt = 10
+Print "1: "+myInt
 myFloat = 10.0
+Print "2: "+myFloat
 myString = "Hello world"
-
--- displaying output
-
-Print myString
+Print "3: "+myString
 
 
 -- arithmetic
 intPlus = myInt + 20
+Print "4: "+intPlus
 floatPlus = myFloat + 20.0
+Print "5: "+floatPlus
 stringPlus = myString + ", and others"
+Print "6: "+floatPlus
 stringPlusValue = myInt + " + " + 20 + " = " + intPlus
+Print "7: "+stringPlusValue
 multiplyNumbers = myFloat * myInt
+Print "8: "+multiplyNumbers
 x = 20*30/2 + 10.0 * (30 + 2)
-Print x
+Print "9: "+x
 
-Print "over"
 b=10
-Print (add 1 2 3)
-Print "under"
-Print a
+functionResult = (add 20 10 200)
+Print "10 (function call): "+ functionResult
+
 -- or the syntactic sugar number[x]
 ms = 0.001
 time = 1[ms]
-Print time
-Print multiplyNumbers
-Print stringPlus
-Print stringPlusValue
-Print 10.5 + 10.5
-Print "--------------------------"
-a = 10
-Print ""
-Print "a= "+10+", b="+20
-Print ""
+Print "11: "+time
 If True {
-    Print "a was less than 5"
+    Print "12: entered if clause"
 } Else {
-    Print "a was greater than 5... It was "+ a
+    Print "error chose the worng clause"
+}
+If False {
+    Print "error chose the wrong clause"
+} Else {
+    Print "13: entered else clause"
 }
 Print "End of program"
 
