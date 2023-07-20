@@ -33,7 +33,8 @@ interpretFile filePath = do
           let statementStream = concat (map fst ast)
           (_, finalState) <- runStateT (interpret statementStream) initRuntime
           putStrLn ""
-          print (errors finalState)
+          mapM print (errors finalState)
+          return ()
         else return ()
     else return ()
 

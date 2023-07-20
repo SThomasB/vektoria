@@ -6,6 +6,8 @@ module Vektoria.Parser.VParse
 import Data.Char
 import Vektoria.Lib.Data.Statement
 import Vektoria.Lib.Data.Token
+import Vektoria.Lib.Data.Expression
+import Vektoria.Lib.Data.Element
 import Vektoria.Lib.ParsingGenerics
 
 getOperator :: Token -> Operator
@@ -63,7 +65,7 @@ assignStatement = do
   symbolSatisfy (== SEqual)
   expr <- expression
   let entityName = lexeme identifier
-  return (Assign $ Entity entityName expr)
+  return (Assign entityName expr)
 
 printStatement :: Parser [Token] Statement
 printStatement = do

@@ -197,6 +197,7 @@ space = do
     many (charSatisfy isSpace)
     return ()
 
+
 ignoreSpace :: Parser String a -> Parser String a
 ignoreSpace parser = do
     space
