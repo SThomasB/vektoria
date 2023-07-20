@@ -4,6 +4,7 @@ import Vektoria.Parser.VParse
 import Vektoria.Interpreter.VInterpret
 import Vektoria.Lib.Data.Statement
 import Vektoria.Lib.Data.Token
+import Vektoria.Interpreter.Runtime
 import System.Environment
 import System.IO
 import Control.Monad (foldM)

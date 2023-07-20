@@ -36,6 +36,7 @@ executable vektoria
                 , Vektoria.Lib.Data.Statement
                 , Vektoria.Lib.ParsingGenerics
                 , Vektoria.Interpreter.Evaluator
+                , Vektoria.Interpreter.Runtime
     build-depends:    base ^>=4.16.4.0
                     , text
                     , unordered-containers
