@@ -3,25 +3,29 @@ import Vektoria.Lib.Data.Element
 
 
 
-type Parameters = [String]
 
 data Expression
-  = Binary Operator Expression Expression
-  | ElemExpr Element
-  | Ref String
-  | Call Expression [Expression]
-  | Tertiary Expression Expression Expression
-  | Lambda Parameters Expression
+  = Elementary { element :: Element }
+  | Reference { reference :: String }
+  | Binary { operator:: Operator, left::Expression, right::Expression }
+  | Tertiary { condition :: Expression, left :: Expression, right :: Expression}
+  | Lambda { parameters :: [String],  computation :: Expression }
+  | Foreign { foreignFuncName :: Expression, arguments :: [Expression] }
+  | Call { function :: Expression, arguments :: [Expression] }
+  | IOExpression { expression :: IO Expression }
 
 
 instance Show Expression where
-  show (ElemExpr element) = "Element: " ++ show element
+  show (Elementary element) = "Element: " ++ show element
   show (Binary op expr2 expr3) =
     "Binary Expression: (" ++
     show op ++ ", " ++ show expr2 ++ ", " ++ show expr3 ++ ")"
-  show (Ref r) = "Reference "++r
+  show (Reference reference) = "Reference "++reference
   show (Call ref args) = "Call "++(show ref)++" "++(show args)
-
+  show (Lambda parameters expression) = "Lambda "++(show parameters)++", "++(show expression)
+  show (Tertiary _ _ _) = "Tertiary expression"
+  show (IOExpression _) = "IO expression"
+  show (Foreign foreignFuncName _) = "Foreign "++ show foreignFuncName
 
 
 data Operator

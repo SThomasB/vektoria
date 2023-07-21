@@ -28,23 +28,15 @@ interpreter stmt = case stmt of
         _ -> addError ("Expected a boolean in if condition")
   Block thisBlock -> interpretBlock False thisBlock
   (Assign name (Lambda parameters expression)) -> do
-    addEntity name (Callable parameters expression)
-  (Assign name (Ref reference)) -> do
+    addEntity name (Nothing, Lambda parameters expression)
+  (Assign name (Reference reference)) -> do
     maybeEntity <- getEntity reference
     case maybeEntity of
       Just entity -> addEntity name entity
       Nothing -> addError ("Reference error")
   (Assign name expression) -> do
     expression' <- dereference expression
-    addEntity name (Computable expression')
-  Print (Ref ref) -> do
-    result <- evaluate (Ref ref)
-    case result of
-      (EError message) -> do
-        addError (message)
-        liftIO $ putStrLn "An error occurred"
-      _ -> do
-        liftIO $ putStrLn (showElement result)
+    addEntity name (Nothing, expression')
   Print expr -> do
     result <- evaluate expr
     case result of
@@ -55,7 +47,7 @@ interpreter stmt = case stmt of
   Weak expr -> do
     expr'  <- dereference expr
     case expr' of
-      (ElemExpr (EError message)) -> addError (message)
+      (Elementary (EError message)) -> addError (message)
       e -> do
         result <- evaluate expr'
         liftIO $ print (showElement (result))

@@ -48,14 +48,14 @@ statement = do
 ifElseStatement :: Parser [Token] Statement
 ifElseStatement =
   do symbolSatisfy (== SIf)
-     condition <- expression
+     condition <- parseExpression
      thenBlock <- do block <|> printStatement
      symbolSatisfy (== SElse)
      elseBlock <- do block <|> ifElseStatement <|> printStatement
      return $ IfElse condition thenBlock elseBlock
      <|> do
     symbolSatisfy (== SIf)
-    condition <- expression
+    condition <- parseExpression
     thenBlock <- do block <|> printStatement
     return $ IfElse condition thenBlock (Block [])
 
@@ -63,39 +63,39 @@ assignStatement :: Parser [Token] Statement
 assignStatement = do
   identifier <- symbolSatisfy (== SIdentifier)
   symbolSatisfy (== SEqual)
-  expr <- expression <|> lambda
+  expr <- parseExpression <|> lambda
   let entityName = lexeme identifier
   return (Assign entityName expr)
 
 printStatement :: Parser [Token] Statement
 printStatement = do
   symbolSatisfy (== SPrint)
-  expr <- expression
+  expr <- parseExpression
   return (Print $ expr)
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
   symbolSatisfy (== SLeftArrow)
-  expr <- expression
+  expr <- parseExpression
   return $ Weak expr
 
 timesBracket :: Parser [Token] Expression
 timesBracket = do
   left <- factor
   symbolSatisfy (== SLeftBracket)
-  right <- expression
+  right <- parseExpression
   symbolSatisfy (== SRightBracket)
   return $ Binary Multiply left right
 
 functionCall :: Parser [Token] Expression
 functionCall = do
   symbolSatisfy (==SLeftParen)
-  callee <- lambda <|> reference
-  args <- some expression
+  callee <- lambda <|> parseReference
+  args <- some parseExpression
   symbolSatisfy (==SRightParen)
   case callee of
-    (Lambda parameters expression) -> return $ Call (Lambda parameters expression) args
-    (Ref ref) -> return $ Call (Ref ref) args
+    (Lambda parameters parseExpression) -> return $ Call (Lambda parameters parseExpression) args
+    (Reference ref) -> return $ Call (Reference ref) args
 
 
 lambda :: Parser [Token] Expression
@@ -104,13 +104,13 @@ lambda = do
   parameters <- many $ symbolSatisfy (==SIdentifier)
   let parameters' = map lexeme parameters
   symbolSatisfy (==SComma)
-  expression <- expression
+  parseExpression <- parseExpression
   symbolSatisfy (==SRightParen)
-  return $ Lambda parameters' expression
+  return $ Lambda parameters' parseExpression
 
 
-expression :: Parser [Token] Expression
-expression = do
+parseExpression :: Parser [Token] Expression
+parseExpression = do
   timesBracket
   <|> binaryExpression
     [ Plus
@@ -148,44 +148,44 @@ factor = tertiary <|> functionCall <|>literalExpr <|> parenExpr
 tertiary :: Parser [Token] Expression
 tertiary = do
   symbolSatisfy (==SBar)
-  condition <- expression
+  condition <- parseExpression
   symbolSatisfy (==SRightArrow)
-  left <- expression
+  left <- parseExpression
   symbolSatisfy (==SBar)
-  right <- expression
+  right <- parseExpression
   return $ Tertiary condition left right
 
 
 parenExpr :: Parser [Token] Expression
 parenExpr = do
   symbolSatisfy (== SLeftParen)
-  expr <- expression
+  expr <- parseExpression
   symbolSatisfy (== SRightParen)
   return expr
 
-reference :: Parser [Token] Expression
-reference = do
+parseReference :: Parser [Token] Expression
+parseReference = do
   token <- symbolSatisfy (== SIdentifier)
-  return $ Ref (lexeme token)
+  return $ Reference (lexeme token)
 
 literalExpr :: Parser [Token] Expression
 literalExpr = do
-  reference
+  parseReference
   <|> do
     token <- symbolSatisfy (== SString)
-    return $ ElemExpr (EString ((init . tail) $ lexeme token))
+    return $ Elementary (EString ((init . tail) $ lexeme token))
   <|> do
     token <- symbolSatisfy (== SInt)
-    return $ ElemExpr (EInt (read $ lexeme token))
+    return $ Elementary (EInt (read $ lexeme token))
   <|> do
     token <- symbolSatisfy (== SFloat)
-    return $ ElemExpr (EFloat (read $ lexeme token))
+    return $ Elementary (EFloat (read $ lexeme token))
   <|> do
     token <- symbolSatisfy (== SFalse)
-    return $ ElemExpr (EBool False)
+    return $ Elementary (EBool False)
   <|> do
     token <- symbolSatisfy (== STrue)
-    return $ ElemExpr (EBool True)
+    return $ Elementary (EBool True)
 
 operatorSatisfy :: (Operator -> Bool) -> Parser [Token] Operator
 operatorSatisfy predicate = do
