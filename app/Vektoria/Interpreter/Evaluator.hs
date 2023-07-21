@@ -18,19 +18,18 @@ evalError op e1 e2 =
 
 
 evalOpposite :: Operator -> Operator -> Expression -> Expression -> Runtime Element
-evalOpposite op opposite (ElemExpr left) (ElemExpr right) = do
-  result <- evaluate (Binary opposite (ElemExpr left) (ElemExpr right))
+evalOpposite op opposite (Elementary left) (Elementary right) = do
+  result <- evaluate (Binary opposite (Elementary left) (Elementary right))
   case result of
     (EBool b) -> return $ EBool (not b)
     _ -> (evalError op left right)
 
 dereference :: Expression -> Runtime Expression
-dereference (Ref r) = do
+dereference (Reference r) = do
   r' <- getEntity r
   case r' of
-    Just (Computable thing) -> return thing
-    Just (Callable bindings thing) -> return thing
-    Nothing -> return $ ElemExpr (EError (r ++ " does not exist"))
+    Just (_, thing) -> return thing
+    Nothing -> return $ Elementary (EError (r ++ " does not exist"))
 dereference (Binary op left right) = do
   left' <- dereference left
   right' <- dereference right
@@ -41,16 +40,22 @@ dereference e = return e
 
 
 createBindings :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
+-- Resolve references, and evaluate arguments before binding them to
+-- corresponding parameters.
 createBindings parameters arguments = do
   let bindings = zip parameters arguments
   maybeResults <- mapM evaluateBinding bindings
   return (sequence maybeResults)
   where
-    evaluateBinding (parameter, (Ref ref)) = do
+    evaluateBinding (parameter, (Reference ref)) = do
       maybeEntity <- getEntity ref
       case maybeEntity of
-        (Just (Callable parameters arguments)) -> return $ Just (parameter, Callable parameters arguments)
-        (Just (Computable expression)) -> evaluateBinding (parameter, expression)
+        -- The first case where the entity is a Lambda, it should be bound directly
+        -- to the parameter; This supports first class functions.
+        (Just (_, Lambda parameters arguments)) -> return $ Just (parameter, (Nothing, Lambda parameters arguments))
+        -- If the entity is any other expression, we evaluate it before binding it
+        -- to the parameter.
+        (Just (_, expression)) -> evaluateBinding (parameter, expression)
         (Nothing) -> do
           addError ("Reference error when evaluating arguments")
           return $ Nothing
@@ -60,20 +65,28 @@ createBindings parameters arguments = do
         (EError message) -> do
           addError ("Error evaluating arguments "++message)
           return Nothing
-        value -> return $ Just (parameter, Computable (ElemExpr value))
+        -- If the argument evaluates to any other element,
+        -- we bind it as an Elementary expression.
+        element -> return $ Just (parameter, (Nothing, Elementary element))
 
 
 evaluateCall :: Expression -> [Expression] -> Runtime Element
-evaluateCall (Ref reference) arguments = do
+-- Calls can be made via reference, or directly to a Lambda expression.
+-- If the callee is a reference, we resolve the indirection before evaluating
+-- the call.
+evaluateCall (Reference reference) arguments = do
     entity <- getEntity reference
     case (entity) of
-      (Just (Callable parameters expression)) -> evaluateCallable parameters arguments expression
+      (Just (_, Lambda parameters expression)) -> evaluateCallable parameters arguments expression
+      (Just (_, _)) -> return $ (EError $ "Can only call lambdas")
       _ -> return $ (EError $ "Reference error: "++reference++" does not exist")
 
 evaluateCall (Lambda parameters expression) arguments = evaluateCallable parameters arguments expression
 
 
 evaluateCallable :: [String]->[Expression]->Expression->Runtime Element
+-- A call can only be resolved if the number of parameters (arity)
+-- matches the number of present arguments in the call expression.
 evaluateCallable parameters arguments expression = do
     let arity = (length parameters)
     let argumentsLength = (length arguments)
@@ -83,9 +96,12 @@ evaluateCallable parameters arguments expression = do
         case bindings of
           Nothing -> return $ EError "Argument error"
           Just validBindings -> do
+            -- The call is about to be resolved;
+            -- A new scope is created to provide local bindings.
             preCallScope <- get
             put $ newScope preCallScope validBindings
             result <- evaluate expression
+            -- the local bindings are abolished by restoring the old scope.
             put preCallScope
             return result
       else return $ EError ("Arity mismatch: "++"expected "++(show arity)++", actual "++(show argumentsLength))
@@ -93,19 +109,24 @@ evaluateCallable parameters arguments expression = do
 
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Element
-evaluate (Ref r) = do
-  r' <- getEntity r
-  case r' of
-    Just (Computable thing) -> do
-      result <- evaluate thing
-      addEntity r (Computable (ElemExpr result))
+evaluate (Reference reference) = do
+  reference' <- getEntity reference
+  case reference' of
+    Just (_, Lambda _ _) -> do
+    -- currently not supported to evaluate lambdas like this.
+      return $ EError ("Can not evaluate callable ("++reference++")")
+    Just (_, expression) -> do
+      result <- evaluate expression
+      -- To avoid reevaluating expressions
+      -- we update the referenced expression with its evaluated form.
+      -- Potential optimization to handle the case where the referenced value
+      -- is already an Elementary.
+      addEntity reference (Nothing, Elementary result)
       return result
-    Just (Callable _ _) -> do
-      return $ EError ("Can not evaluate callable ("++r++")")
-    Nothing -> return $ EError ("Reference error: "++r ++ " does not exist")
+    Nothing -> return $ EError ("Reference error: "++reference ++ " does not exist")
 
 evaluate (Call expression args) = evaluateCall expression args
-evaluate (ElemExpr expr) = return expr
+evaluate (Elementary expr) = return expr
 evaluate (Tertiary condition left right) = do
   isTrue <- evaluate condition
   case isTrue of
@@ -114,86 +135,86 @@ evaluate (Tertiary condition left right) = do
     _ -> return isTrue
 -- comparisons
 -- And
-evaluate (Binary And (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
+evaluate (Binary And (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ EBool (left && right)
-evaluate (Binary Or (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
+evaluate (Binary Or (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ EBool (left || right)
 -- Equals
-evaluate (Binary Equals (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary Equals (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EBool (left == right)
-evaluate (Binary Equals (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary Equals (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ EBool (left == right)
-evaluate (Binary Equals (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evaluate (Binary Equals (Elementary (EString left)) (Elementary (EString right))) =
   return $ EBool (left == right)
-evaluate (Binary Equals (ElemExpr (EBool left)) (ElemExpr (EBool right))) =
+evaluate (Binary Equals (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ EBool (left == right)
 -- NotEquals
-evaluate (Binary NotEquals (ElemExpr left) (ElemExpr right)) =
-  evalOpposite NotEquals Equals (ElemExpr left) (ElemExpr right)
+evaluate (Binary NotEquals (Elementary left) (Elementary right)) =
+  evalOpposite NotEquals Equals (Elementary left) (Elementary right)
 -- Greater
-evaluate (Binary Greater (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary Greater (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EBool (left > right)
-evaluate (Binary Greater (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary Greater (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ EBool (left > right)
-evaluate (Binary Greater (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evaluate (Binary Greater (Elementary (EString left)) (Elementary (EString right))) =
   return $ EBool (left /= right && (isSubstring right left))
 -- Less
-evaluate (Binary Less (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evaluate (Binary Less (Elementary (EString left)) (Elementary (EString right))) =
   return $ EBool (left /= right && (isSubstring left right))
-evaluate (Binary Less (ElemExpr left) (ElemExpr right)) =
-  evalOpposite Less Greater (ElemExpr left) (ElemExpr right)
+evaluate (Binary Less (Elementary left) (Elementary right)) =
+  evalOpposite Less Greater (Elementary left) (Elementary right)
 -- Superset
-evaluate (Binary SuperSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary SuperSet (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EBool (left >= right)
-evaluate (Binary SuperSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary SuperSet (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ EBool (left >= right)
-evaluate (Binary SuperSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evaluate (Binary SuperSet (Elementary (EString left)) (Elementary (EString right))) =
   return $ EBool (isSubstring right left)
 -- Subset
-evaluate (Binary SubSet (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary SubSet (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EBool (left <= right)
-evaluate (Binary SubSet (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary SubSet (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ EBool (left <= right)
-evaluate (Binary SubSet (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evaluate (Binary SubSet (Elementary (EString left)) (Elementary (EString right))) =
   return $ EBool (isSubstring left right)
 -- Multiply
-evaluate (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary Multiply (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EInt (left * right)
-evaluate (Binary Multiply (ElemExpr (EFloat left)) (ElemExpr (EInt right))) =
+evaluate (Binary Multiply (Elementary (EFloat left)) (Elementary (EInt right))) =
   return $ EFloat (left * (fromIntegral right))
-evaluate (Binary Multiply (ElemExpr (EInt left)) (ElemExpr (EFloat right))) =
+evaluate (Binary Multiply (Elementary (EInt left)) (Elementary (EFloat right))) =
   return $ EFloat ((fromIntegral left) * right)
-evaluate (Binary Multiply (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary Multiply (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ EFloat (left * right)
 -- Divide
-evaluate (Binary Divide (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary Divide (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $  EFloat (left / right)
-evaluate (Binary Divide (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary Divide (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EInt (div left right)
 -- Minus
-evaluate (Binary Minus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary Minus (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EInt (left - right)
 -- Plus
-evaluate (Binary Plus (ElemExpr (EInt left)) (ElemExpr (EInt right))) =
+evaluate (Binary Plus (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ EInt (left + right)
-evaluate (Binary Plus (ElemExpr (EFloat left)) (ElemExpr (EFloat right))) =
+evaluate (Binary Plus (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ EFloat (left + right)
-evaluate (Binary Plus (ElemExpr (EString left)) (ElemExpr (EString right))) =
+evaluate (Binary Plus (Elementary (EString left)) (Elementary (EString right))) =
   return $ EString (left ++ right)
-evaluate (Binary Plus (ElemExpr (EError left)) (ElemExpr right)) =
+evaluate (Binary Plus (Elementary (EError left)) (Elementary right)) =
   evalError Plus (EError left) right
-evaluate (Binary Plus (ElemExpr left) (ElemExpr (EError right))) =
+evaluate (Binary Plus (Elementary left) (Elementary (EError right))) =
   evalError Plus (EError right) left
-evaluate (Binary Plus (ElemExpr (EString left)) (ElemExpr right)) =
+evaluate (Binary Plus (Elementary (EString left)) (Elementary right)) =
   return $ EString ((left) ++ (showElement right))
-evaluate (Binary Plus (ElemExpr (left)) (ElemExpr (EString right))) =
+evaluate (Binary Plus (Elementary (left)) (Elementary (EString right))) =
   return $ EString ((showElement left) ++ (right))
-evaluate (Binary op (ElemExpr left) (ElemExpr right)) =
+evaluate (Binary op (Elementary left) (Elementary right)) =
   evalError op left right
 evaluate (Binary op left right) = do
     left' <- evaluate left
     right' <- evaluate right
     evaluate (Binary
        op
-       (ElemExpr (left'))
-       (ElemExpr (right')))
+       (Elementary (left'))
+       (Elementary (right')))

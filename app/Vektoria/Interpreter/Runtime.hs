@@ -1,51 +1,71 @@
 module Vektoria.Interpreter.Runtime (module Vektoria.Interpreter.Runtime,
   module Control.Monad.State) where
-import Vektoria.Lib.Data.Entity
 import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap
-type Runtime a = StateT RuntimeState IO a
-type EntityMap = HashMap.HashMap String Entity
+import Vektoria.Lib.Data.Expression
 
+type Runtime a = StateT RuntimeState IO a
+type Scope = HashMap.HashMap String Entity
+
+
+type Entity = (Maybe Metadata, Expression)
+
+
+data Metadata = Metadata {
+    typeSignature :: Maybe String
+} deriving Show
+
+emptyMetadata :: Metadata
+emptyMetadata = Metadata {typeSignature=Nothing}
 
 
 data RuntimeError = RuntimeError {
     message :: String
 } deriving (Show)
 
+
 data RuntimeState = RuntimeState
-  { entities :: EntityMap
+  { scope :: Scope
   , errors :: [RuntimeError]
   } deriving (Show)
 
 
 initRuntime::RuntimeState
-initRuntime = RuntimeState {entities=initEntityMap, errors=[]}
+initRuntime=RuntimeState {scope=initScope, errors=[]}
 
 
 getEntity :: String -> Runtime (Maybe Entity)
 getEntity name = do
-    entities <- gets entities
-    return $ entities `named` name
+    scope <- gets scope
+    return $ scope `named` name
 
 
-addEntity :: String -> Entity -> Runtime ()
-addEntity name value = modify $ \s -> s { entities = HashMap.insert name value (entities s) }
+addEntity :: String -> (Maybe Metadata, Expression) -> Runtime ()
+addEntity name (metadata, expression) = modify $ \s -> s { scope = HashMap.insert name (metadata, expression) (scope s) }
 
 
 addError :: String -> Runtime ()
 addError message = modify $ \s -> s { errors = (errors s) ++ [RuntimeError message] }
 
 
-initEntityMap :: EntityMap
-initEntityMap = HashMap.fromList testCallables
+initScope :: Scope
+initScope = HashMap.fromList testLambdas
 
 
-named :: EntityMap -> String -> (Maybe Entity)
-entities `named` name = HashMap.lookup name entities
+named :: Scope -> String -> (Maybe Entity)
+scope `named` name = HashMap.lookup name scope
 
 
 newScope :: RuntimeState -> [(String, Entity)] -> RuntimeState
 newScope state newEntities =
-    state { entities = HashMap.union (HashMap.fromList newEntities) (entities state)}
+    state { scope = HashMap.union (HashMap.fromList newEntities) (scope state)}
 
 
+
+addLambda :: Entity
+addLambda = (Nothing, Lambda ["a", "b", "c"] (Binary Plus (Reference "a") (Binary Plus (Reference "b") (Reference "c"))))
+
+
+
+testLambdas :: [(String, Entity)]
+testLambdas = [("add", addLambda)]

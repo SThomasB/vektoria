@@ -1,0 +1,27 @@
+
+-- how could we represent >>= and >>?
+f = do
+  print "hello"
+  x <- getLine
+  print x
+
+f = (print "hello") >> (getLine >>= (\x -> print x))
+
+
+bind = (a fm,
+    (fm a)
+)
+
+compose = (f g, (@ArgsOf g, f (g x)))
+
+
+
+f = (@bind @getLine (x, @print x+(add 1 2 3)))
+
+
+
+f = 20 + b
+
+b = 10
+
+a = 10
