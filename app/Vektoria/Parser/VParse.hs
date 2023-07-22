@@ -3,6 +3,7 @@ module Vektoria.Parser.VParse
   , run
   ) where
 
+
 import Data.Char
 import Vektoria.Lib.Data.Statement
 import Vektoria.Lib.Data.Token
@@ -43,7 +44,7 @@ block = do
 
 statement :: Parser [Token] Statement
 statement = do
-  assignStatement <|> ifElseStatement <|> printStatement
+  weakStatement <|> assignStatement <|> ifElseStatement <|> printStatement
 
 ifElseStatement :: Parser [Token] Statement
 ifElseStatement =
@@ -142,12 +143,12 @@ term :: Parser [Token] Expression
 term = binaryExpression [Multiply, Divide] factor
 
 factor :: Parser [Token] Expression
-factor = tertiary <|> functionCall <|>literalExpr <|> parenExpr
+factor = tertiary <|> functionCall <|> foreignCall <|> literalExpr <|> parenExpr
 
 
 tertiary :: Parser [Token] Expression
 tertiary = do
-  symbolSatisfy (==SBar)
+  symbolSatisfy (==SQuestion)
   condition <- parseExpression
   symbolSatisfy (==SRightArrow)
   left <- parseExpression
@@ -168,6 +169,15 @@ parseReference = do
   token <- symbolSatisfy (== SIdentifier)
   return $ Reference (lexeme token)
 
+foreignCall :: Parser [Token] Expression
+foreignCall = do
+    symbolSatisfy (==SAt)
+    token <- symbolSatisfy (==SIdentifier)
+    expressions <- many parseExpression
+    return $ Call (Foreign $ lexeme token) expressions
+
+
+
 literalExpr :: Parser [Token] Expression
 literalExpr = do
   parseReference
@@ -187,6 +197,7 @@ literalExpr = do
     token <- symbolSatisfy (== STrue)
     return $ Elementary (EBool True)
 
+
 operatorSatisfy :: (Operator -> Bool) -> Parser [Token] Operator
 operatorSatisfy predicate = do
   token <- next
@@ -195,8 +206,10 @@ operatorSatisfy predicate = do
     then return op
     else empty
 
+
 symbolSatisfy :: (Symbol -> Bool) -> Parser [Token] Token
 symbolSatisfy = satisfy symbol
+
 
 isOneOf :: Eq a => [a] -> (a -> Bool)
 isOneOf = flip elem

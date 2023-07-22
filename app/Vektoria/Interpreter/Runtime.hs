@@ -3,6 +3,7 @@ module Vektoria.Interpreter.Runtime (module Vektoria.Interpreter.Runtime,
 import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap
 import Vektoria.Lib.Data.Expression
+import Vektoria.Lib.Data.Element
 
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
@@ -26,18 +27,23 @@ data RuntimeError = RuntimeError {
 
 data RuntimeState = RuntimeState
   { scope :: Scope
+  , ffi :: Scope
   , errors :: [RuntimeError]
   } deriving (Show)
 
 
 initRuntime::RuntimeState
-initRuntime=RuntimeState {scope=initScope, errors=[]}
+initRuntime=RuntimeState {scope=initScope, ffi=initFFI, errors=[]}
 
 
-getEntity :: String -> Runtime (Maybe Entity)
+getEntity, getForeign :: String -> Runtime (Maybe Entity)
 getEntity name = do
     scope <- gets scope
     return $ scope `named` name
+
+getForeign name = do
+  foreignEntities <- gets ffi
+  return $ foreignEntities `named` name
 
 
 addEntity :: String -> (Maybe Metadata, Expression) -> Runtime ()
@@ -48,8 +54,9 @@ addError :: String -> Runtime ()
 addError message = modify $ \s -> s { errors = (errors s) ++ [RuntimeError message] }
 
 
-initScope :: Scope
+initScope, initFFI :: Scope
 initScope = HashMap.fromList testLambdas
+initFFI = HashMap.fromList foreignFunctions
 
 
 named :: Scope -> String -> (Maybe Entity)
@@ -69,3 +76,23 @@ addLambda = (Nothing, Lambda ["a", "b", "c"] (Binary Plus (Reference "a") (Binar
 
 testLambdas :: [(String, Entity)]
 testLambdas = [("add", addLambda)]
+
+foreignFunctions :: [(String, Entity)]
+foreignFunctions =
+                 [("print", (Nothing, IOAction printFFI))]
+
+-- FFI
+printFFI :: [Expression] -> IO Expression
+printFFI [] = do
+  putStrLn ""
+  return $ Elementary EVoid
+printFFI [Elementary element] = do
+  putStrLn $ showElement element
+  return $ Elementary EVoid
+printFFI expressions = do
+  mapM (putStrLn . showElement . extractElement) expressions
+  return $ Elementary EVoid
+
+extractElement :: Expression -> Element
+extractElement (Elementary element) = element
+extractElement _ = EVoid

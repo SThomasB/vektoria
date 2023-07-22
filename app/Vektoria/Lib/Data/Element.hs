@@ -24,4 +24,5 @@ showElement (EInt v) = show v
 showElement (EFloat v) = show v
 showElement (EError v) = v
 showElement (EBool v) = show v
-showElement _ = ""
+showElement (EVoid) = "<:Void"
+

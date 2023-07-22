@@ -80,7 +80,16 @@ evaluateCall (Reference reference) arguments = do
       (Just (_, Lambda parameters expression)) -> evaluateCallable parameters arguments expression
       (Just (_, _)) -> return $ (EError $ "Can only call lambdas")
       _ -> return $ (EError $ "Reference error: "++reference++" does not exist")
-
+evaluateCall (Foreign reference) arguments = do
+  entity <- getForeign reference
+  case (entity) of
+    (Just (_, IOAction action)) -> do
+      arguments' <- mapM (fmap Elementary . evaluate) arguments
+      result <- liftIO $ action arguments'
+      case result of
+        (Elementary element) -> return element
+        _ -> return $ EError ("Error in foreign function "++reference)
+    _ -> return $ EError "No such foreign function"
 evaluateCall (Lambda parameters expression) arguments = evaluateCallable parameters arguments expression
 
 

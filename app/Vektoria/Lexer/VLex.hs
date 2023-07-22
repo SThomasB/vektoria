@@ -9,7 +9,9 @@ vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
     (ignoreSpace $ identifierToken lineNr)
     <|> (ignoreSpace $ leftArrowToken lineNr)
+    <|> (ignoreSpace $ atToken lineNr)
     <|> (ignoreSpace $ rightArrowToken lineNr)
+    <|> (ignoreSpace $ questionToken lineNr)
     <|> (ignoreSpace $ ifToken lineNr)
     <|> (ignoreSpace $ elseToken lineNr)
     <|> (ignoreSpace $ commaToken lineNr)
@@ -17,7 +19,7 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ printToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
     <|> (ignoreSpace $ falseToken lineNr)
-    <|> stringToken lineNr
+    <|> (stringToken lineNr)
     <|> (ignoreSpace $ leftBracketToken lineNr)
     <|> (ignoreSpace $ rightBracketToken lineNr)
     <|> (ignoreSpace $ floatToken lineNr)
@@ -57,9 +59,12 @@ parseGlyphToken sym thisGlyph line = do
     glyph thisGlyph
     return $ Token sym line [thisGlyph]
 
+atToken :: Int -> Lexer
+atToken = parseGlyphToken SAt '@'
 
 leftParenToken :: Int -> Lexer
 leftParenToken = parseGlyphToken SLeftParen '('
+
 rightParenToken :: Int -> Lexer
 rightParenToken = parseGlyphToken SRightParen ')'
 
@@ -76,6 +81,8 @@ leftBraceToken = parseGlyphToken SLeftBrace '{'
 rightBraceToken :: Int -> Lexer
 rightBraceToken = parseGlyphToken SRightBrace '}'
 
+questionToken :: Int -> Lexer
+questionToken = parseGlyphToken SQuestion '?'
 
 leftToken :: Int -> Lexer
 leftToken = parseGlyphToken SLeft '<'
@@ -170,9 +177,11 @@ elseToken lineNr = do
 
 stringToken :: Int -> Lexer
 stringToken line = do
+    space
     first <- glyph '"'
     middle <- many $ charSatisfy (/='"')
     last <- glyph '"'
+    space
     return $ Token SString line ((first:middle)++[last])
 
 intToken :: Int -> Lexer

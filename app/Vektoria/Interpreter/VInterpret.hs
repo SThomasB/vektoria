@@ -45,12 +45,21 @@ interpreter stmt = case stmt of
         liftIO $ putStrLn ("An error occurred in: "++(show stmt))
       (_) -> liftIO $ putStrLn (showElement result)
   Weak expr -> do
-    expr'  <- dereference expr
-    case expr' of
+    case expr of
+      (Reference reference) -> do
+        maybeEntity <- getEntity reference
+        case maybeEntity of
+          Just (_, expression) -> do
+            evaluate expression
+            return ()
+          Nothing -> addError ("Reference error")
+      (Call expression arguments) -> do
+            evaluate (Call expression arguments)
+            return ()
       (Elementary (EError message)) -> addError (message)
-      e -> do
-        result <- evaluate expr'
-        liftIO $ print (showElement (result))
+      _ -> do
+        liftIO $ putStrLn ("yep")
+        return ()
 
 
 

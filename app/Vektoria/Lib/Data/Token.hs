@@ -8,8 +8,10 @@ data Token = Token
 
 data Symbol
   = SIdentifier
+  | SQuestion
   | SLeftArrow
   | SRightArrow
+  | SAt
   | SIf
   | SElse
   | SEqual
