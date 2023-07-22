@@ -1,27 +1,37 @@
 
--- how could we represent >>= and >>?
-f = do
-  print "hello"
-  x <- getLine
-  print x
+-- assignments
 
-f = (print "hello") >> (getLine >>= (\x -> print x))
+-- literal assignment
+assign1 = 10
+assign11 = <-(10)
+-- reference assignment
+-- a reference must be evaluated before binding
+
+assign2 = assign1
+assign22 = <-(assign1)
+
+-- lambda assignment
+-- a lambda is immediatly bound
+<-(@print "assign3 = (n, n+1)")
+assign3 = (n, n+1)
+Print assign3
+<-(@print "assign33 =<-(n, n+1)")
+assign33 = <-(n, n+1)
+<-(@print assign33)
 
 
-bind = (a fm,
-    (fm a)
-)
 
-compose = (f g, (@ArgsOf g, f (g x)))
-
-
-
-f = (@bind @getLine (x, @print x+(add 1 2 3)))
+-- call assignment
+-- call should be evaluated before binding
+assign4=(assign3 10)
+assign44=<-(assign3 10)
 
 
 
-f = 20 + b
+<-@print
+    assign44
 
-b = 10
 
-a = 10
+
+
+

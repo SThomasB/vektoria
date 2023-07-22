@@ -79,10 +79,12 @@ testLambdas = [("add", addLambda)]
 
 foreignFunctions :: [(String, Entity)]
 foreignFunctions =
-                 [("print", (Nothing, IOAction printFFI))]
+                 [("print", (Nothing, IOAction printFFI))
+                 ,("probe", (Nothing, IOAction probeFFI))
+                 ]
 
 -- FFI
-printFFI :: [Expression] -> IO Expression
+printFFI, probeFFI :: [Expression] -> IO Expression
 printFFI [] = do
   putStrLn ""
   return $ Elementary EVoid
@@ -92,6 +94,17 @@ printFFI [Elementary element] = do
 printFFI expressions = do
   mapM (putStrLn . showElement . extractElement) expressions
   return $ Elementary EVoid
+
+probeFFI [Elementary element] = do
+    putStrLn $ showElement element
+    return $ Elementary element
+
+probeFFI [expression] = do
+  print expression
+  return expression
+probeFFI expressions = do
+  mapM (putStrLn . showElement . extractElement) expressions
+  return $ (last expressions)
 
 extractElement :: Expression -> Element
 extractElement (Elementary element) = element

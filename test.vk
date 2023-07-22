@@ -4,26 +4,15 @@
 -- assignment
 
 myInt = 10
-Print "1: 10="+myInt
 myFloat = 10.0
-Print "2: 10.0="+myFloat
 myString = "Hello world"
-Print "3: Hello world="+myString
-
-
 -- arithmetic
 intPlus = myInt + 20
-Print "4: 30="+intPlus
 floatPlus = myFloat + 20.0
-Print "5: 30.0="+floatPlus
 stringPlus = myString + ", and others"
-Print "6: "+floatPlus
 stringPlusValue = myInt + " + " + 20 + " = " + intPlus
-Print "7: "+stringPlusValue
 multiplyNumbers = myFloat * myInt
-Print "8: "+multiplyNumbers
 x = 20*30/2 + 10.0 * (30 + 2)
-Print "9: "+x
 
 b=10
 functionResult = (add
@@ -35,61 +24,26 @@ functionResult = (add
     (add 1 2 3)
     (add 1 2 3)
 )
-Print "10 (function call): "+ functionResult
+
 
 -- or the syntactic sugar number[x]
 ms = 0.001
 time = 1[ms]
-Print "11: "+time
-If True {
-    Print "12: entered if clause"
-} Else {
-    Print "error chose the worng clause"
-}
-If False {
-    Print "error chose the wrong clause"
-} Else {
-    Print "13: entered else clause"
-}
 
-Print "14: should be arity error = "+(add 1 2)
-
-If (add 1 2 3) > 2 Print "15: function call in binary op = good"
-Else Print "15: function call in binary op = not good"
 
 x = 1
 y = 2
-If (add x y 3) == 6
-    Print "16: References as arguments = good "
-Else
-    Print "16: References as arguments = bad "
-
-If (1+3*(y+x))== 10
-    Print "17: variables in parenthesized factors = good"
-Else
-    Print "17: variables in parenthesized factors = bad"
-Print "18: lambdas should be 2 =" + ((a, a+1) 1)
-
 myFunc = (a, a+1)
 myOuterFunc = (a, (myFunc 2) + 3)
-
-Print "Bound lambda, should be 3 =" + (myFunc 2)
-
-Print "Bound lambda using another bound lambda, should be 6 =" + (myOuterFunc 2)
 aliasAdd = (a b c d,
     a+b+c+d+(add a b c)
 )
-
 g = (x, x+1)
 preInc = (f x, (f x+1))
-
-
 rec = (a b,
     ? a<b -> (rec b a+1)
     | a
 )
-
-
 tertiary = 2 * ? 3>4  -> 5
                |
                ? 5>2  -> 2
@@ -97,16 +51,42 @@ tertiary = 2 * ? 3>4  -> 5
                ? True -> 3
                | 1
 
-<-@print
+printFirstTen = (
+    @print
+    "1: 10="+myInt
+    "2: 10.0="+myFloat
+    "3: Hello world="+myString
+    "4: 30="+intPlus
+    "5: 30.0="+floatPlus
+    "6: "+floatPlus
+    "7: "+stringPlusValue
+    "8: "+multiplyNumbers
+    "9: "+x
+    "10 (function call) ="+ (functionResult==21)
+)
+
+printIt = (
+  @print
+    "11: bracket multiply ="+(time==ms)
+    "14: should be arity error = "
+    (add 1 2)
+    "15: function call in binary op ="+((add 1 2 3) > 2)
+    "16: References as arguments ="+((add x y 3) == 6)
+    "17: variables in parenthesized factors ="+((1+3*(y+x))== 10)
+    "18: lambdas should be 2 =" + ((a, a+1) 1)
     "19 Use function in function ="+((aliasAdd 1 1 1 1)==7)
     "20: Functions are first class ="+((preInc g 1)==3)
     "21: Functions can recurse ="+((rec 0 10) == 10)
     "22: Tertiary expression in arithmetic expression ="+(tertiary==4)
-    "There should be two errors in this program"
+    "23: Bound lambda, should be 3 =" + (myFunc 2)
+    "24: Bound lambda using another bound lambda, should be 6 =" + (myOuterFunc 2)
+    "25: The return type of printing hello should be void"+(printFirstTen)
+)
+<-printIt
 
-
-
-
+<-@print
+  "should be void: "+printFirstTen
+  "should be void: "+printIt
 
 
 

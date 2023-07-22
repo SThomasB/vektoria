@@ -17,40 +17,37 @@ interpret :: [Statement] -> Runtime ()
 interpret = mapM_ interpreter
 
 
+assign :: [Modifier] -> String -> Expression -> Runtime ()
+assign [Eager] name expression = do
+    expression' <- evaluate expression
+    addEntity name (Nothing, expression')
+
+assign [] name expression = do
+    addEntity name (Nothing, expression)
+
 interpreter :: Statement -> Runtime ()
 interpreter stmt = case stmt of
   IfElse condition thenBlock elseBlock -> do
     result <- evaluate condition
     case result of
-        (EError e) -> addError (e)
-        EBool True -> interpreter thenBlock
-        EBool False -> interpreter elseBlock
+        (Elementary (EError e)) -> addError (e)
+        (Elementary (EBool True)) -> interpreter thenBlock
+        (Elementary (EBool False)) -> interpreter elseBlock
         _ -> addError ("Expected a boolean in if condition")
   Block thisBlock -> interpretBlock False thisBlock
-  (Assign name (Lambda parameters expression)) -> do
-    addEntity name (Nothing, Lambda parameters expression)
-  (Assign name (Reference reference)) -> do
-    maybeEntity <- getEntity reference
-    case maybeEntity of
-      Just entity -> addEntity name entity
-      Nothing -> addError ("Reference error")
-  (Assign name expression) -> do
-    expression' <- dereference expression
-    addEntity name (Nothing, expression')
+
+  (Assign modifiers name expression) -> assign modifiers name expression
+
   Print expr -> do
-    result <- evaluate expr
-    case result of
-      (EError message) -> do
-        addError (message)
-        liftIO $ putStrLn ("An error occurred in: "++(show stmt))
-      (_) -> liftIO $ putStrLn (showElement result)
+    liftIO $ print expr
   Weak expr -> do
     case expr of
       (Reference reference) -> do
         maybeEntity <- getEntity reference
         case maybeEntity of
-          Just (_, expression) -> do
-            evaluate expression
+          Just (meta, expression) -> do
+            expression' <- evaluate expression
+            addEntity reference (meta, expression')
             return ()
           Nothing -> addError ("Reference error")
       (Call expression arguments) -> do

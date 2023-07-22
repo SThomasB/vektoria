@@ -1,3 +1,4 @@
+
 module Vektoria.Parser.VParse
   ( vektoriaParse
   , run
@@ -64,9 +65,11 @@ assignStatement :: Parser [Token] Statement
 assignStatement = do
   identifier <- symbolSatisfy (== SIdentifier)
   symbolSatisfy (== SEqual)
+  modifiers <- many $ symbolSatisfy (==SLeftArrow)
+  let modifier = if (length modifiers)==0 then [] else [Eager]
   expr <- parseExpression <|> lambda
   let entityName = lexeme identifier
-  return (Assign entityName expr)
+  return (Assign modifier entityName expr)
 
 printStatement :: Parser [Token] Statement
 printStatement = do
@@ -91,11 +94,12 @@ timesBracket = do
 functionCall :: Parser [Token] Expression
 functionCall = do
   symbolSatisfy (==SLeftParen)
-  callee <- lambda <|> parseReference
+  callee <- lambda <|> parseReference <|> functionCall
   args <- some parseExpression
   symbolSatisfy (==SRightParen)
   case callee of
     (Lambda parameters parseExpression) -> return $ Call (Lambda parameters parseExpression) args
+    (Call expression arguments ) -> return $ Call (Call expression arguments) args
     (Reference ref) -> return $ Call (Reference ref) args
 
 
@@ -113,6 +117,7 @@ lambda = do
 parseExpression :: Parser [Token] Expression
 parseExpression = do
   timesBracket
+  <|> lambda
   <|> binaryExpression
     [ Plus
     , Minus

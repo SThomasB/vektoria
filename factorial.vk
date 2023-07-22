@@ -1,0 +1,10 @@
+
+
+factorialTail = (n acc,
+               ? n == 0 -> acc
+               | (factorialTail (n-1) (n*acc))
+)
+
+<-((n, @probe
+    "Factorial "+n+" is "+(factorialTail n 1)
+) 10)
