@@ -53,6 +53,7 @@ tertiary = 2 * ? 3>4  -> 5
 
 printFirstTen = (
     @print
+    "---------------------Test------------------"
     "1: 10="+myInt
     "2: 10.0="+myFloat
     "3: Hello world="+myString
@@ -80,15 +81,61 @@ printIt = (
     "22: Tertiary expression in arithmetic expression ="+(tertiary==4)
     "23: Bound lambda, should be 3 =" + (myFunc 2)
     "24: Bound lambda using another bound lambda, should be 6 =" + (myOuterFunc 2)
-    "25: The return type of printing hello should be void"+(printFirstTen)
+    "25: The return type of printing the first ten items should be void"+(printFirstTen)
 )
 <-printIt
 
+<-((@print
+    ""
+    ""
+    "------------Samples-------------------"
+    ""
+    ""
+    "1 factorial:"
+    "-- use 'let in' syntactic sugar for constructing local bindings"
+    ""
+    "2 fibbonacci:"
+    "-- use @probe to print and return values"
+    ""
+))
+
+factorialTail = (n acc,
+               ? n == 0 -> acc
+               | (factorialTail (n-1) (n*acc))
+)
+
+<-let n=10 a=2 in (@print
+    "----------------Factorial---------------"
+    ""
+    "Factorial "+(n+a)+" is "+(factorialTail (n+a) 1)
+    ""
+    ""
+    "----------------end program--------------"
+)
+
+
+fibTail = (n a b,
+        ? n == 1 -> a
+        | (fibTail (@probe "Comupting..." n-1)  b a+b)
+)
+
+n=10
+
+result = let fib=(x, @probe (fibTail x 0 1)) in (
+    (fib n)
+)
+
 <-@print
-  "should be void: "+printFirstTen
-  "should be void: "+printIt
+    "--------------Fib-------------------"
+    ""
+    "Fib of 10 is:..."
+    ""
 
+<-result
+tull=20
 
+<-(@print ""
+"-----------------end program----------------"
+)
 
-
-
+<-((@probe fibTail) 7 0 1)

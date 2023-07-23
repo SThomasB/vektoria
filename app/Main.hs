@@ -21,25 +21,30 @@ main = do
 interpretFile :: String -> IO ()
 interpretFile filePath = do
   content <- readFile filePath
+  print content
   let lexedLines = zipWith runLex [1..] (lines content)
+  print lexedLines
   isValid <- allM check lexedLines
   if isValid
     then do
       let tokenStream = concat (filter (notComment) $ (map getTokens) lexedLines)
       let ast = runParse tokenStream
+      print ast
       isValidAst <- checkAst ast
+      print isValidAst
       if isValidAst
         then do
           let statementStream = concat (map fst ast)
           (_, finalState) <- runStateT (interpret statementStream) initRuntime
           --putStrLn ""
           --putStrLn "Accrued errors:"
-          --mapM print (zip [1..] (errors finalState))
-          putStrLn "--------------------------"
-          --print (finalState)
+          mapM print (zip [1..] (errors finalState))
+          print (finalState)
           return ()
         else return ()
-    else return ()
+    else do
+      putStrLn "Invalid tokens"
+      return ()
 
 notComment :: [Token] -> Bool
 notComment [] = True

@@ -81,6 +81,7 @@ foreignFunctions :: [(String, Entity)]
 foreignFunctions =
                  [("print", (Nothing, IOAction printFFI))
                  ,("probe", (Nothing, IOAction probeFFI))
+                 ,("user" , (Nothing, IOAction getInputFFI))
                  ]
 
 -- FFI
@@ -105,6 +106,14 @@ probeFFI [expression] = do
 probeFFI expressions = do
   mapM (putStrLn . showElement . extractElement) expressions
   return $ (last expressions)
+
+getInputFFI [] = do
+    value <- getLine
+    return $ Elementary (EString value)
+getInputFFI [exrpession] = do
+    value <- getLine
+    return $ Elementary (EString value)
+
 
 extractElement :: Expression -> Element
 extractElement (Elementary element) = element

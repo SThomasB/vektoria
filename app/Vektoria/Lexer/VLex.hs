@@ -7,7 +7,9 @@ import Data.Char
 type Lexer = Parser String Token
 vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
-    (ignoreSpace $ identifierToken lineNr)
+     (ignoreSpace $ letToken lineNr)
+    <|> (ignoreSpace $ inToken lineNr)
+    <|> (ignoreSpace $ identifierToken lineNr)
     <|> (ignoreSpace $ leftArrowToken lineNr)
     <|> (ignoreSpace $ atToken lineNr)
     <|> (ignoreSpace $ rightArrowToken lineNr)
@@ -49,8 +51,8 @@ vektoriaLex lineNr = do
 
 identifierToken :: Int -> Lexer
 identifierToken line = do
-    first <- charSatisfy isLower
-    remaining <- many $ charSatisfy isAlphaNum
+    first <- (charSatisfy isLower) <|> (glyph '_')
+    remaining <- many $ (charSatisfy isAlphaNum) <|> (glyph '_')
     return $ Token SIdentifier line (first:remaining)
 
 
@@ -174,6 +176,18 @@ elseToken :: Int -> Lexer
 elseToken lineNr = do
     glyphs "Else"
     return $ Token SElse lineNr "Else"
+
+letToken :: Int -> Lexer
+letToken lineNr = do
+    glyphs "let"
+    some $ charSatisfy isSpace
+    return $ Token SLet lineNr "let"
+
+inToken :: Int -> Lexer
+inToken lineNr = do
+    glyphs "in"
+    some $ charSatisfy isSpace
+    return $ Token SIn lineNr "in"
 
 stringToken :: Int -> Lexer
 stringToken line = do

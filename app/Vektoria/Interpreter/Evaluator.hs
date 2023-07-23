@@ -75,19 +75,19 @@ evaluateCall :: Expression -> [Expression] -> Runtime Expression
 -- If the callee is a reference, we resolve the indirection before evaluating
 -- the call.
 evaluateCall (Reference reference) arguments = do
-    entity <- getEntity reference
+    entity <- evaluate (Reference reference)
     case (entity) of
-      (Just (_, Lambda parameters expression)) -> evaluateCallable parameters arguments expression
-      (Just (_, _)) -> do
+      (Lambda parameters expression) -> evaluateCallable parameters arguments expression
+      _ -> do
         return $ Elementary (EError "Can only call lambdas")
-      _ -> return $ Elementary (EError $ "Reference error: "++reference++" does not exist")
 evaluateCall (Foreign reference) arguments = do
-  entity <- getForeign reference
+  entity <- evaluate (Foreign reference)
   case (entity) of
-    (Just (_, IOAction action)) -> do
+    (IOAction action) -> do
       arguments' <- mapM (evaluate) arguments
       liftIO $ action arguments'
     _ -> return $ Elementary (EError "No such foreign function")
+
 evaluateCall (Lambda parameters expression) arguments = evaluateCallable parameters arguments expression
 evaluateCall (Call expression arguments) outerArguments = do
   callee <- evaluateCall expression arguments
@@ -125,6 +125,11 @@ evaluateCallable parameters arguments expression = do
 
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Expression
+evaluate (Foreign reference) = do
+  reference' <- getForeign reference
+  case reference' of
+    Just (_, function) -> return function
+    Nothing -> return $ Elementary (EError ("Reference error: foreign function does not exist"))
 evaluate (Reference reference) = do
   reference' <- getEntity reference
   case reference' of

@@ -8,7 +8,7 @@ data Statement
     =
     Block [Statement]
     | IfElse Expression Statement Statement
-    | Assign [Modifier] String Expression
+    | Assign {modifiers::[Modifier], name::String, expression :: Expression}
     | Print Expression
     | Weak Expression
     deriving Show

@@ -36,7 +36,10 @@ interpreter stmt = case stmt of
         _ -> addError ("Expected a boolean in if condition")
   Block thisBlock -> interpretBlock False thisBlock
 
-  (Assign modifiers name expression) -> assign modifiers name expression
+  (Assign modifiers name expression) -> do
+    liftIO $ print expression
+    liftIO $ print name
+    assign modifiers name expression
 
   Print expr -> do
     liftIO $ print expr
