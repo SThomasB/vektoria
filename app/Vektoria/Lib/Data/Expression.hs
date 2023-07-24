@@ -1,8 +1,15 @@
 module Vektoria.Lib.Data.Expression where
 import Vektoria.Lib.Data.Element
+import Data.Unique
 
 
 
+
+type Entity = (Maybe Metadata, Expression)
+
+data Metadata = Metadata {
+    typeSignature :: Maybe String
+} deriving Show
 
 data Expression
   = Elementary { element :: Element }
@@ -10,7 +17,7 @@ data Expression
   | Foreign { reference :: String}
   | Binary { operator:: Operator, left::Expression, right::Expression }
   | Tertiary { condition :: Expression, left :: Expression, right :: Expression}
-  | Lambda { parameters :: [String],  computation :: Expression }
+  | Lambda { closureId :: Maybe Unique,  parameters :: [String],  computation :: Expression }
   | Call { function :: Expression, arguments :: [Expression] }
   | IOAction { action :: ([Expression] ->  IO Expression) }
 
@@ -23,7 +30,7 @@ instance Show Expression where
     show op ++ ", " ++ show expr2 ++ ", " ++ show expr3 ++ ")"
   show (Reference reference) = "Reference "++reference
   show (Call ref args) = "Call "++(show ref)++" "++(show args)
-  show (Lambda parameters expression) = "Lambda "++(show parameters)++", "++(show expression)
+  show (Lambda _ parameters expression) = "Lambda "++(show parameters)++", "++(show expression)
   show (Tertiary _ _ _) = "Tertiary expression"
   show (IOAction _) = "<:IO"
   show (Foreign reference) = "Foreign "++ reference

@@ -106,7 +106,7 @@ functionCall = do
   args <- some parseExpression
   symbolSatisfy (==SRightParen)
   case callee of
-    (Lambda parameters body) -> return $ Call (Lambda parameters body) args
+    (Lambda _ parameters body) -> return $ Call (Lambda Nothing parameters body) args
     (Call expression arguments ) -> return $ Call (Call expression arguments) args
     (Reference ref) -> return $ Call (Reference ref) args
 
@@ -119,7 +119,7 @@ letInExpression = do
   let arguments = map expression bindings
   symbolSatisfy (==SIn)
   body <- parseExpression
-  return $ Call (Lambda parameters body) arguments
+  return $ Call (Lambda Nothing parameters body) arguments
 
 
 
@@ -130,7 +130,7 @@ lambda = do
   symbolSatisfy (==SComma)
   body <- parseExpression
   symbolSatisfy (==SRightParen)
-  return $ Lambda parameters body
+  return $ Lambda Nothing parameters body
 
 
 parseExpression :: Parser [Token] Expression

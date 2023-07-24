@@ -4,6 +4,7 @@ import Vektoria.Lib.Data.Expression
 import Vektoria.Interpreter.Runtime
 import Vektoria.Lib.Data.Entity
 import Vektoria.Lib.Data.Element
+import Data.Unique
 import qualified Data.Text as T
 
 
@@ -52,7 +53,7 @@ createBindings parameters arguments = do
       case maybeEntity of
         -- The first case where the entity is a Lambda, it should be bound directly
         -- to the parameter; This supports first class functions.
-        (Just (_, Lambda parameters arguments)) -> return $ Just (parameter, (Nothing, Lambda parameters arguments))
+        (Just (_, Lambda closureId parameters arguments)) -> return $ Just (parameter, (Nothing, Lambda closureId parameters arguments))
         -- If the entity is any other expression, we evaluate it before binding it
         -- to the parameter.
         (Just (_, expression)) -> evaluateBinding (parameter, expression)
@@ -77,7 +78,7 @@ evaluateCall :: Expression -> [Expression] -> Runtime Expression
 evaluateCall (Reference reference) arguments = do
     entity <- evaluate (Reference reference)
     case (entity) of
-      (Lambda parameters expression) -> evaluateCallable parameters arguments expression
+      (Lambda closureId parameters expression) -> evaluateCallable parameters arguments expression
       _ -> do
         return $ Elementary (EError "Can only call lambdas")
 evaluateCall (Foreign reference) arguments = do
@@ -88,17 +89,60 @@ evaluateCall (Foreign reference) arguments = do
       liftIO $ action arguments'
     _ -> return $ Elementary (EError "No such foreign function")
 
-evaluateCall (Lambda parameters expression) arguments = evaluateCallable parameters arguments expression
+evaluateCall (Lambda _ parameters expression) arguments = evaluateCallable parameters arguments expression
 evaluateCall (Call expression arguments) outerArguments = do
   callee <- evaluateCall expression arguments
   case callee of
-    (Lambda parameters expression) -> evaluateCallable parameters outerArguments expression
+    (Lambda _ parameters expression) -> evaluateCallable parameters outerArguments expression
     _ -> return $ Elementary (EError "Callees must evaluate to lambdas")
   evaluateCall callee outerArguments
 evaluateCall expression arguments = do
   liftIO $ print expression
   liftIO $ print arguments
   return $ Elementary (EError "Cant handle this case")
+
+{-
+resolve :: Unique -> [String] -> Expression -> Runtime ()
+
+resolve closureId protected (Reference reference) = do
+  if reference `elem` protected
+    then return
+    else
+
+
+resolve protected (Call callee arguments) = do
+  callee' <- resolve protected callee
+  arguments' <- mapM (resolve protected) arguments
+  return $ Call callee arguments
+
+
+resolve protected (Tertiary condition left right) = do
+  condition' <- resolve protected condition
+  left' <- resolve protected left
+  right' <- resolve protected right
+  return $ Tertiary condition left right
+
+
+resolve protected (Binary op left right) = do
+  left' <- resolve protected left
+  right' <- resolve protected right
+  return $ Binary op left' right'
+
+resolve protected (Lambda closureId parameters expression) = do
+  resolve parameters expression
+
+resolve _ (expression) = return expression
+
+
+entity :: String -> Runtime Expression
+entity reference = do
+  maybeEntity <- getEntity reference
+  case maybeEntity of
+    Just (_, thing) -> return thing
+    Nothing -> return $ Elementary (EError (reference ++ " does not exist"))
+-}
+
+
 
 evaluateCallable :: [String]->[Expression]->Expression->Runtime Expression
 -- A call can only be resolved if the number of parameters (arity)
@@ -117,9 +161,19 @@ evaluateCallable parameters arguments expression = do
             preCallScope <- get
             put $ newScope preCallScope validBindings
             result <- evaluate expression
+            result' <- do
+              case result of
+                (Lambda maybeId parameters expression) -> do
+                  case maybeId of
+                    Just id -> return result
+                    Nothing -> do
+                      closure <- createClosure
+                      return result
+                _ -> return result
             -- the local bindings are abolished by restoring the old scope.
+            liftIO $ print result'
             put preCallScope
-            return result
+            return result'
       else return $ Elementary (EError ("Arity mismatch: "++"expected "++(show arity)++", actual "++(show argumentsLength)))
 
 
@@ -133,9 +187,9 @@ evaluate (Foreign reference) = do
 evaluate (Reference reference) = do
   reference' <- getEntity reference
   case reference' of
-    Just (_, Lambda parameters expression) -> do
+    Just (_, Lambda closureId parameters expression) -> do
     -- currently not supported to evaluate lambdas like this.
-      return $ Lambda parameters expression
+      return $ Lambda closureId parameters expression
     Just (_, expression) -> do
       result <- evaluate expression
       -- To avoid reevaluating expressions
@@ -146,7 +200,7 @@ evaluate (Reference reference) = do
       return result
     Nothing -> return $ Elementary (EError ("Reference error: "++reference ++ " does not exist"))
 
-evaluate (Lambda parameters arguments) = return $ Lambda parameters arguments
+evaluate (Lambda closureId parameters arguments) = return $ Lambda closureId parameters arguments
 evaluate (Call expression args) = evaluateCall expression args
 evaluate (Elementary expr) = return (Elementary expr)
 evaluate (Tertiary condition left right) = do

@@ -4,17 +4,10 @@ import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap
 import Vektoria.Lib.Data.Expression
 import Vektoria.Lib.Data.Element
-
+import Data.Unique
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
-
-
-type Entity = (Maybe Metadata, Expression)
-
-
-data Metadata = Metadata {
-    typeSignature :: Maybe String
-} deriving Show
+type Closures = HashMap.HashMap Unique Scope
 
 emptyMetadata :: Metadata
 emptyMetadata = Metadata {typeSignature=Nothing}
@@ -25,16 +18,35 @@ data RuntimeError = RuntimeError {
 } deriving (Show)
 
 
+
 data RuntimeState = RuntimeState
   { scope :: Scope
   , ffi :: Scope
+  , closures :: Closures
   , errors :: [RuntimeError]
-  } deriving (Show)
+  }
+instance Show RuntimeState where
+  show s = (show (scope s ))
 
 
 initRuntime::RuntimeState
-initRuntime=RuntimeState {scope=initScope, ffi=initFFI, errors=[]}
+initRuntime=RuntimeState {closures=initClosures, scope=initScope, ffi=initFFI, errors=[]}
 
+initClosures :: Closures
+initClosures = HashMap.empty
+createClosure :: Runtime ()
+createClosure = do
+  id <- liftIO $ newUnique
+  modify $ \s -> s {closures=HashMap.insert id HashMap.empty (closures s)}
+  where
+
+addToClosure :: Unique -> String -> Entity -> Runtime ()
+addToClosure id name entity = do
+  closures' <- gets closures
+  closure' <- case HashMap.lookup id closures' of
+    Just closure -> return $ HashMap.insert name entity closure
+    Nothing -> error "No such closure id exists"
+  modify $ \s -> s {closures=HashMap.insert id closure' (closures')}
 
 getEntity, getForeign :: String -> Runtime (Maybe Entity)
 getEntity name = do
@@ -70,7 +82,7 @@ newScope state newEntities =
 
 
 addLambda :: Entity
-addLambda = (Nothing, Lambda ["a", "b", "c"] (Binary Plus (Reference "a") (Binary Plus (Reference "b") (Reference "c"))))
+addLambda = (Nothing, Lambda Nothing ["a", "b", "c"] (Binary Plus (Reference "a") (Binary Plus (Reference "b") (Reference "c"))))
 
 
 

@@ -37,8 +37,6 @@ interpreter stmt = case stmt of
   Block thisBlock -> interpretBlock False thisBlock
 
   (Assign modifiers name expression) -> do
-    liftIO $ print expression
-    liftIO $ print name
     assign modifiers name expression
 
   Print expr -> do

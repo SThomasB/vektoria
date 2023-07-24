@@ -1,0 +1,9 @@
+
+-- simulate objects by creating closures
+person = (name age, (message, (message name age)))
+
+getName = (person, (person (name _, name)))
+
+
+me = (person "Thomas" 30)
+
