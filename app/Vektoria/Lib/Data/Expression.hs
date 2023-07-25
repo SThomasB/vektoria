@@ -5,12 +5,6 @@ import Data.Unique
 
 
 
-type Entity = (Maybe Metadata, Expression)
-
-data Metadata = Metadata {
-    typeSignature :: Maybe String
-} deriving Show
-
 data Expression
   = Elementary { element :: Element }
   | Reference { reference :: String }

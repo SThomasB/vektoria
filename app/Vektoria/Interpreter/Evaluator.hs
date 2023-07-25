@@ -85,8 +85,16 @@ evaluateCall (Foreign reference) arguments = do
   entity <- evaluate (Foreign reference)
   case (entity) of
     (IOAction action) -> do
-      arguments' <- mapM (evaluate) arguments
-      liftIO $ action arguments'
+      case arguments of
+        [] -> liftIO $ action []
+        _ -> do
+          returns <- forM arguments (\arg -> do
+            argument' <- evaluate arg
+            liftIO $ action [argument'])
+          case returns of
+            [] -> return $ Elementary (EVoid)
+            _ -> return $ last returns
+          --liftIO $ action arguments'
     _ -> return $ Elementary (EError "No such foreign function")
 
 evaluateCall (Lambda _ parameters expression) arguments = evaluateCallable parameters arguments expression
@@ -97,33 +105,30 @@ evaluateCall (Call expression arguments) outerArguments = do
     _ -> return $ Elementary (EError "Callees must evaluate to lambdas")
   evaluateCall callee outerArguments
 evaluateCall expression arguments = do
-  liftIO $ print expression
-  liftIO $ print arguments
   return $ Elementary (EError "Cant handle this case")
 
-{-
-resolve :: Unique -> [String] -> Expression -> Runtime ()
+resolve :: [String] -> Expression -> Runtime Expression
 
-resolve closureId protected (Reference reference) = do
+resolve protected (Reference reference) = do
   if reference `elem` protected
-    then return
-    else
+    then return $ Reference reference
+    else entity reference
 
 
-resolve protected (Call callee arguments) = do
+resolve  protected (Call callee arguments) = do
   callee' <- resolve protected callee
   arguments' <- mapM (resolve protected) arguments
-  return $ Call callee arguments
+  return $ Call callee arguments'
 
 
-resolve protected (Tertiary condition left right) = do
+resolve  protected (Tertiary condition left right) = do
   condition' <- resolve protected condition
   left' <- resolve protected left
   right' <- resolve protected right
   return $ Tertiary condition left right
 
 
-resolve protected (Binary op left right) = do
+resolve  protected (Binary op left right) = do
   left' <- resolve protected left
   right' <- resolve protected right
   return $ Binary op left' right'
@@ -131,7 +136,7 @@ resolve protected (Binary op left right) = do
 resolve protected (Lambda closureId parameters expression) = do
   resolve parameters expression
 
-resolve _ (expression) = return expression
+resolve  _ (expression) = return expression
 
 
 entity :: String -> Runtime Expression
@@ -140,7 +145,6 @@ entity reference = do
   case maybeEntity of
     Just (_, thing) -> return thing
     Nothing -> return $ Elementary (EError (reference ++ " does not exist"))
--}
 
 
 
@@ -164,14 +168,10 @@ evaluateCallable parameters arguments expression = do
             result' <- do
               case result of
                 (Lambda maybeId parameters expression) -> do
-                  case maybeId of
-                    Just id -> return result
-                    Nothing -> do
-                      closure <- createClosure
-                      return result
+                  expression' <- resolve parameters expression
+                  return $ Lambda maybeId parameters expression'
                 _ -> return result
             -- the local bindings are abolished by restoring the old scope.
-            liftIO $ print result'
             put preCallScope
             return result'
       else return $ Elementary (EError ("Arity mismatch: "++"expected "++(show arity)++", actual "++(show argumentsLength)))

@@ -4,10 +4,19 @@ import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap
 import Vektoria.Lib.Data.Expression
 import Vektoria.Lib.Data.Element
+import System.CPUTime
 import Data.Unique
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
 type Closures = HashMap.HashMap Unique Scope
+
+
+type Entity = (Maybe Metadata, Expression)
+
+
+data Metadata = Metadata {
+    typeSignature :: Maybe String
+} deriving Show
 
 emptyMetadata :: Metadata
 emptyMetadata = Metadata {typeSignature=Nothing}
@@ -94,9 +103,11 @@ foreignFunctions =
                  [("print", (Nothing, IOAction printFFI))
                  ,("probe", (Nothing, IOAction probeFFI))
                  ,("user" , (Nothing, IOAction getInputFFI))
+                 ,("CPUTime", (Nothing, IOAction cpuTimeFFI))
                  ]
 
 -- FFI
+
 printFFI, probeFFI :: [Expression] -> IO Expression
 printFFI [] = do
   putStrLn ""
@@ -115,6 +126,7 @@ probeFFI [Elementary element] = do
 probeFFI [expression] = do
   print expression
   return expression
+
 probeFFI expressions = do
   mapM (putStrLn . showElement . extractElement) expressions
   return $ (last expressions)
@@ -122,9 +134,18 @@ probeFFI expressions = do
 getInputFFI [] = do
     value <- getLine
     return $ Elementary (EString value)
-getInputFFI [exrpession] = do
+getInputFFI [Elementary (EString value)] = do
+    putStr value
     value <- getLine
     return $ Elementary (EString value)
+
+getInputFFI [expression] = do
+    value <- getLine
+    return $ Elementary (EString value)
+
+cpuTimeFFI [] = do
+  value <- getCPUTime
+  return $ Elementary (EInt $ fromIntegral value)
 
 
 extractElement :: Expression -> Element
