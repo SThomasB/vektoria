@@ -1,0 +1,24 @@
+
+-- simulate objects by creating closures
+person = (name age,
+    (message, (message name age)))
+getName = (obj, (obj (name age, name)))
+getAge = (obj, (obj (_ age, age)))
+setAge = (
+    obj newAge,
+    (person (getName obj) newAge)
+)
+
+thomas =<- (person (@user "Enter your name: ") (@user "Enter your age"))
+
+<-@print
+    "Your name is: " + (getName thomas)
+    "Your age is: " + (getAge thomas)
+
+
+-- thomas=(message, (message name age))
+-- resolve ["message"] (message, (message name age))
+
+
+
+

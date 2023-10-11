@@ -1,7 +1,9 @@
+
 module Vektoria.Parser.VParse
   ( vektoriaParse
   , run
   ) where
+
 
 import Data.Char
 import Vektoria.Lib.Data.Statement
@@ -34,6 +36,7 @@ vektoriaParse :: Parser [Token] Statement
 vektoriaParse = do
   statement <|> block
 
+
 block :: Parser [Token] Statement
 block = do
   symbolSatisfy (== SLeftBrace)
@@ -41,9 +44,11 @@ block = do
   symbolSatisfy (== SRightBrace)
   return $ Block result
 
+
 statement :: Parser [Token] Statement
 statement = do
-  assignStatement <|> ifElseStatement <|> printStatement
+  weakStatement <|> assignStatement <|> ifElseStatement <|> printStatement
+
 
 ifElseStatement :: Parser [Token] Statement
 ifElseStatement =
@@ -59,13 +64,17 @@ ifElseStatement =
     thenBlock <- do block <|> printStatement
     return $ IfElse condition thenBlock (Block [])
 
+
 assignStatement :: Parser [Token] Statement
 assignStatement = do
   identifier <- symbolSatisfy (== SIdentifier)
   symbolSatisfy (== SEqual)
-  expr <- parseExpression <|> lambda
+  modifiers <- many $ symbolSatisfy (==SLeftArrow)
+  let modifier = if (length modifiers)==0 then [] else [Eager]
+  expr <- letInExpression <|> parseExpression <|> lambda
   let entityName = lexeme identifier
-  return (Assign entityName expr)
+  return (Assign modifier entityName expr)
+
 
 printStatement :: Parser [Token] Statement
 printStatement = do
@@ -73,11 +82,13 @@ printStatement = do
   expr <- parseExpression
   return (Print $ expr)
 
+
 weakStatement :: Parser [Token] Statement
 weakStatement = do
   symbolSatisfy (== SLeftArrow)
   expr <- parseExpression
   return $ Weak expr
+
 
 timesBracket :: Parser [Token] Expression
 timesBracket = do
@@ -87,31 +98,45 @@ timesBracket = do
   symbolSatisfy (== SRightBracket)
   return $ Binary Multiply left right
 
+
 functionCall :: Parser [Token] Expression
 functionCall = do
   symbolSatisfy (==SLeftParen)
-  callee <- lambda <|> parseReference
+  callee <- foreignCall <|> tertiary <|> letInExpression <|> lambda <|> parseReference <|> functionCall
   args <- some parseExpression
   symbolSatisfy (==SRightParen)
   case callee of
-    (Lambda parameters parseExpression) -> return $ Call (Lambda parameters parseExpression) args
+    (Lambda _ parameters body) -> return $ Call (Lambda Nothing parameters body) args
+    (Call expression arguments ) -> return $ Call (Call expression arguments) args
     (Reference ref) -> return $ Call (Reference ref) args
+
+
+letInExpression :: Parser [Token] Expression
+letInExpression = do
+  symbolSatisfy (==SLet)
+  bindings <- some assignStatement
+  let parameters = map name bindings
+  let arguments = map expression bindings
+  symbolSatisfy (==SIn)
+  body <- parseExpression
+  return $ Call (Lambda Nothing parameters body) arguments
+
 
 
 lambda :: Parser [Token] Expression
 lambda = do
   symbolSatisfy (==SLeftParen)
-  parameters <- many $ symbolSatisfy (==SIdentifier)
-  let parameters' = map lexeme parameters
+  parameters <- many $ fmap lexeme (symbolSatisfy (==SIdentifier))
   symbolSatisfy (==SComma)
-  parseExpression <- parseExpression
+  body <- parseExpression
   symbolSatisfy (==SRightParen)
-  return $ Lambda parameters' parseExpression
+  return $ Lambda Nothing parameters body
 
 
 parseExpression :: Parser [Token] Expression
 parseExpression = do
   timesBracket
+  <|> lambda
   <|> binaryExpression
     [ Plus
     , Minus
@@ -142,12 +167,17 @@ term :: Parser [Token] Expression
 term = binaryExpression [Multiply, Divide] factor
 
 factor :: Parser [Token] Expression
-factor = tertiary <|> functionCall <|>literalExpr <|> parenExpr
+factor = letInExpression
+    <|> tertiary
+    <|> functionCall
+    <|> foreignCall
+    <|> literalExpr
+    <|> parenExpr
 
 
 tertiary :: Parser [Token] Expression
 tertiary = do
-  symbolSatisfy (==SBar)
+  symbolSatisfy (==SQuestion)
   condition <- parseExpression
   symbolSatisfy (==SRightArrow)
   left <- parseExpression
@@ -165,8 +195,24 @@ parenExpr = do
 
 parseReference :: Parser [Token] Expression
 parseReference = do
-  token <- symbolSatisfy (== SIdentifier)
-  return $ Reference (lexeme token)
+  reference <- fmap lexeme (symbolSatisfy (== SIdentifier))
+  return $ Reference reference
+
+
+foreignCall :: Parser [Token] Expression
+foreignCall = do
+    openingParen <- fmap length $ many (symbolSatisfy (==SLeftParen))
+    symbolSatisfy (==SAt)
+    reference <- fmap lexeme $ symbolSatisfy (==SIdentifier)
+    expressions <- many parseExpression
+    if openingParen /= 0
+      then do
+        closingParen <- fmap length $ many (symbolSatisfy (==SRightParen))
+        if openingParen /= closingParen
+         then empty
+         else return $ Call (Foreign reference) expressions
+    else return $ Call (Foreign reference) expressions
+
 
 literalExpr :: Parser [Token] Expression
 literalExpr = do
@@ -187,6 +233,7 @@ literalExpr = do
     token <- symbolSatisfy (== STrue)
     return $ Elementary (EBool True)
 
+
 operatorSatisfy :: (Operator -> Bool) -> Parser [Token] Operator
 operatorSatisfy predicate = do
   token <- next
@@ -195,8 +242,10 @@ operatorSatisfy predicate = do
     then return op
     else empty
 
+
 symbolSatisfy :: (Symbol -> Bool) -> Parser [Token] Token
 symbolSatisfy = satisfy symbol
+
 
 isOneOf :: Eq a => [a] -> (a -> Bool)
 isOneOf = flip elem
