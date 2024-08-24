@@ -1,0 +1,51 @@
+
+
+person = (name age, (message, (message name age)))
+
+
+show = (name age, "Person :"+ " name: "+ name + ", age: "+ age)
+
+thomas =<-(person "Thomas" 30)
+
+name = (name age, name)
+<-(@print
+    (thomas name)
+)
+<-(@print
+    (thomas show)
+)
+
+
+false = (x y, y)
+true = (x y, x)
+and = (b p, ((b p false) p false))
+
+
+or = (b p, ((b true p) true p))
+bool = (p, ? p -> true | false)
+
+
+<-(@print
+    ((and (bool 5>2) false) "True" "False")
+    ((and false false) "True" "False")
+    ((and false true) "True" "False")
+    ((and true true) "True" "False")
+    ((or false false) "True" "False")
+    ((or true false) "True" "False")
+    ((or false true) "True" "False")
+    ((or true true) "True" "False")
+)
+
+
+<-(@print
+    ? 2>5 -> 10 | "Hello tuden"
+)
+
+
+
+
+
+
+
+
+

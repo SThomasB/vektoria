@@ -103,7 +103,7 @@ foreignFunctions =
                  [("print", (Nothing, IOAction printFFI))
                  ,("probe", (Nothing, IOAction probeFFI))
                  ,("user" , (Nothing, IOAction getInputFFI))
-                 ,("CPUTime", (Nothing, IOAction cpuTimeFFI))
+                 ,("cpuTime", (Nothing, IOAction cpuTimeFFI))
                  ]
 
 -- FFI

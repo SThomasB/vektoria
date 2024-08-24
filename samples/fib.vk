@@ -1,12 +1,19 @@
 
 
 
-fib = let tail = (n a b,
+fib = (n a b,
             ? n == 1 -> a
-            | (tail n-1 b a+b)
-      )
-      in (n, tail (@probe n) 0 1)
-<-(fib)
+            | (fib n-1 b a+b))
+
+start = <-@cpuTime
+
+<-(@print
+    (fib 40.0 0 1)
+)
+
+end = <-@cpuTime
+
+<-@print "It took: " (end-start)/1000000
 
 
 
