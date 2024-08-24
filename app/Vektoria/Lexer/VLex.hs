@@ -203,6 +203,7 @@ intToken line = do
     n <- some $ charSatisfy isDigit
     return $ Token SInt line n
 
+
 floatToken :: Int -> Lexer
 floatToken line = do
     n <- some $ charSatisfy isDigit
@@ -227,7 +228,6 @@ space :: Parser String ()
 space = do
     many (charSatisfy isSpace)
     return ()
-
 
 ignoreSpace :: Parser String a -> Parser String a
 ignoreSpace parser = do

@@ -8,11 +8,14 @@ factorialTail = (n acc,
 
 --let in expressions -> ((n a, @print (factorial n 1)) 10 20)
 
-
-<-let n=10 a=2 in @print
+start=<-@cpuTime
+<-let n=40 in (@print
     "----------------Factorial---------------"
     ""
-    "Factorial "+(n+a)+" is "+(factorialTail (n+a) 1)
+    "Factorial "+(n)+" is "+(factorialTail (n) 1)
     ""
     ""
     "----------------endprogram--------------"
+)
+end=<-(@cpuTime)
+<-@print (end-start)/1000000
