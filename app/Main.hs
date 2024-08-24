@@ -10,13 +10,26 @@ import System.IO
 import Control.Monad (foldM)
 import Control.Monad.State (runStateT)
 
+
+
+
+userStream = lines <$> getContents
+lexify = zipWith runLex [1..]
+buildAST = map (getStatements . runParse . getTokens)
 main :: IO ()
 main = do
     args <- getArgs
     case args of
-      [] -> interpretFile "test.vk"
+      [] -> ((map head) <$> buildAST <$> lexify <$> userStream) >>= (\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
+      ["--lex"] -> (zipWith runLex [1..] ) <$> (lines <$> getContents) >>= (mapM_ print)
+      ["--ast"] -> buildAST <$> lexify <$> userStream >>= (mapM_ print)
+      ["--de", prg] -> ((map head) <$> buildAST <$> (pure $ lexify (lines prg))) >>=(\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
       [filePath] -> do interpretFile filePath
       _ -> putStrLn "Invalid arguments."
+
+
+
+
 
 interpretFile :: String -> IO ()
 interpretFile filePath = do
@@ -34,7 +47,7 @@ interpretFile filePath = do
       if isValidAst
         then do
           let statementStream = concat (map fst ast)
-          (_, finalState) <- runStateT (interpret statementStream) initRuntime
+          (_, finalState) <- runStateT (interpret False statementStream) initRuntime
           --putStrLn ""
           --putStrLn "Accrued errors:"
           --mapM print (zip [1..] (errors finalState))

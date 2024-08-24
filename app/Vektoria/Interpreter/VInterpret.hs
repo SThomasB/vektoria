@@ -13,8 +13,8 @@ import Control.Monad (foldM)
 import Control.Monad.State
 
 
-interpret :: [Statement] -> Runtime ()
-interpret = mapM_ interpreter
+interpret :: Bool -> [Statement] -> Runtime ()
+interpret echo = mapM_ (interpreter echo)
 
 
 assign :: [Modifier] -> String -> Expression -> Runtime ()
@@ -25,14 +25,14 @@ assign [Eager] name expression = do
 assign [] name expression = do
     addEntity name (Nothing, expression)
 
-interpreter :: Statement -> Runtime ()
-interpreter stmt = case stmt of
+interpreter :: Bool -> Statement -> Runtime ()
+interpreter echo stmt = case stmt of
   IfElse condition thenBlock elseBlock -> do
     result <- evaluate condition
     case result of
         (Elementary (EError e)) -> addError (e)
-        (Elementary (EBool True)) -> interpreter thenBlock
-        (Elementary (EBool False)) -> interpreter elseBlock
+        (Elementary (EBool True)) -> interpreter False thenBlock
+        (Elementary (EBool False)) -> interpreter False elseBlock
         _ -> addError ("Expected a boolean in if condition")
   Block thisBlock -> interpretBlock False thisBlock
 
@@ -49,22 +49,28 @@ interpreter stmt = case stmt of
           Just (meta, expression) -> do
             expression' <- evaluate expression
             addEntity reference (meta, expression')
+
             return ()
           Nothing -> addError ("Reference error")
       (Call expression arguments) -> do
             evaluate (Call expression arguments)
             return ()
       (Elementary (EError message)) -> addError (message)
-      _ -> do
-        liftIO $ putStrLn ("yep")
-        return ()
+      _ -> if echo
+             then do
+               expression' <- evaluate expr
+               case expression' of
+                 (Elementary element) -> liftIO $ putStrLn (showElement element)
+                 _ -> liftIO $ putStrLn (show expression')
+             else
+               return ()
 
 
 
 interpretBlock :: Bool -> [Statement] -> Runtime ()
 interpretBlock commit statements = do
   oldState <- get
-  interpret statements
+  interpret False statements
   if commit
     then return ()
     else put oldState
