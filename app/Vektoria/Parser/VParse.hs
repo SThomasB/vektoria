@@ -47,7 +47,7 @@ block = do
 
 statement :: Parser [Token] Statement
 statement = do
-  weakStatement <|> assignStatement <|> ifElseStatement <|> printStatement
+  assignStatement <|> weakStatement <|> ifElseStatement <|> printStatement
 
 
 ifElseStatement :: Parser [Token] Statement
@@ -85,7 +85,6 @@ printStatement = do
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
-  symbolSatisfy (== SLeftArrow)
   expr <- parseExpression
   return $ Weak expr
 

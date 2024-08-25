@@ -1,0 +1,8 @@
+a=(@print "hello")
+b=(@print "there")
+add = (a b, @probe( (@probe a) + (@probe b) ))
+addTwo = (add 2 2)
+b a (addTwo)
+
+
+

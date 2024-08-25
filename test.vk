@@ -83,9 +83,9 @@ printIt = (
     "24: Bound lambda using another bound lambda, should be 6 =" + (myOuterFunc 2)
     "25: The return type of printing the first ten items should be void"+(printFirstTen)
 )
-<-printIt
+printIt
 
-<-((@print
+(@print
     ""
     ""
     "------------Samples-------------------"
@@ -97,14 +97,14 @@ printIt = (
     "2 fibbonacci:"
     "-- use @probe to print and return values"
     ""
-))
+)
 
 factorialTail = (n acc,
                ? n == 0 -> acc
                | (factorialTail (n-1) (n*acc))
 )
 
-<-let n=10 a=2 in (@print
+let n=10 a=2 in (@print
     "----------------Factorial---------------"
     ""
     "Factorial "+(n+a)+" is "+(factorialTail (n+a) 1)
@@ -125,17 +125,17 @@ result = let fib=(x, @probe (fibTail x 0 1)) in (
     (fib n)
 )
 
-<-@print
+(@print
     "--------------Fib-------------------"
     ""
     "Fib of 10 is:..."
     ""
+)
 
-<-result
 tull=20
 
-<-(@print ""
+(@print ""
 "-----------------end program----------------"
 )
 
-<-((@probe fibTail) 7 0 1)
+((@probe fibTail) 7 0 1)
