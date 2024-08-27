@@ -1,0 +1,14 @@
+
+
+
+loop = (times f,
+  let it=(
+    a x, ? a==times -> (f a) | (it a+1 (f a))
+  )
+  in (it 0 (x, x))
+)
+
+(loop 10 (x, (@print "line: " + x)))
+
+
+

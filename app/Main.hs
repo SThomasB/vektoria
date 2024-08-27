@@ -7,7 +7,7 @@ import Vektoria.Lib.Data.Token
 import Vektoria.Interpreter.Runtime
 import System.Environment
 import System.IO
-import Control.Monad (foldM)
+import Control.Monad (foldM, forM, mapM_, mapM)
 import Control.Monad.State (runStateT)
 
 

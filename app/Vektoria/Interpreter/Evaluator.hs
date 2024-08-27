@@ -4,6 +4,7 @@ import Vektoria.Lib.Data.Expression
 import Vektoria.Interpreter.Runtime
 import Vektoria.Lib.Data.Entity
 import Vektoria.Lib.Data.Element
+import Control.Monad
 import Data.Unique
 import qualified Data.Text as T
 
