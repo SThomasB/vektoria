@@ -104,11 +104,16 @@ foreignFunctions =
                  ,("probe", (Nothing, IOAction probeFFI))
                  ,("user" , (Nothing, IOAction getInputFFI))
                  ,("cpuTime", (Nothing, IOAction cpuTimeFFI))
+                 ,("file", (Nothing, IOAction fileFFI))
                  ]
 
 -- FFI
 
 printFFI, probeFFI :: [Expression] -> IO Expression
+fileFFI [] = return $ Elementary (EError "@file requires at least one argument")
+fileFFI [Elementary (EString value)] = do
+ content <- readFile value
+ return $ Elementary (EString content)
 printFFI [] = do
   putStrLn ""
   return $ Elementary EVoid
@@ -134,6 +139,7 @@ probeFFI expressions = do
 getInputFFI [] = do
     value <- getLine
     return $ Elementary (EString value)
+
 getInputFFI [Elementary (EString value)] = do
     putStr value
     value <- getLine
