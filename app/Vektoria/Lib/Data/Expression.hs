@@ -11,7 +11,7 @@ data Expression
   | Foreign { reference :: String}
   | Binary { operator:: Operator, left::Expression, right::Expression }
   | Tertiary { condition :: Expression, left :: Expression, right :: Expression}
-  | Lambda { closureId :: Maybe Unique,  parameters :: [String],  computation :: Expression }
+  | Lambda { closure :: [(String, Expression)],  parameters :: [String],  computation :: Expression }
   | Call { function :: Expression, arguments :: [Expression] }
   | IOAction { action :: ([Expression] ->  IO Expression) }
 

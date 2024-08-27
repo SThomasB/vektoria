@@ -41,6 +41,7 @@ executable vektoria
                 , Vektoria.Interpreter.Evaluator
                 , Vektoria.Interpreter.Runtime
     build-depends:    base >=4.16.4.0 && <4.21
+                    , random
                     , text
                     , unordered-containers
                     , mtl

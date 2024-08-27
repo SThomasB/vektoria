@@ -8,16 +8,13 @@ import Control.Monad
 import Data.Unique
 import qualified Data.Text as T
 
-
 -- pack converts string to text (not lazy)
 isSubstring :: String -> String -> Bool
 isSubstring needle haystack = T.isInfixOf (T.pack needle) (T.pack haystack)
 
-
 evalError :: Operator -> Element -> Element -> Runtime Expression
 evalError op e1 e2 =
   return $ Elementary (EError ("("++(show e1) ++ ") " ++ (show op) ++ " (" ++ (show e2) ++") "++ " is undefined"))
-
 
 evalOpposite :: Operator -> Operator -> Expression -> Expression -> Runtime Expression
 evalOpposite op opposite (Elementary left) (Elementary right) = do
@@ -38,9 +35,6 @@ dereference (Binary op left right) = do
   return $ Binary op left' right'
 dereference e = return e
 
-
-
-
 createBindings :: [String]->[Expression] -> Runtime (Maybe [(String, Entity)])
 -- Resolve references, and evaluate arguments before binding them to
 -- corresponding parameters.
@@ -54,7 +48,7 @@ createBindings parameters arguments = do
       case maybeEntity of
         -- The first case where the entity is a Lambda, it should be bound directly
         -- to the parameter; This supports first class functions.
-        (Just (_, Lambda closureId parameters arguments)) -> return $ Just (parameter, (Nothing, Lambda closureId parameters arguments))
+        (Just (_, Lambda closure parameters arguments)) -> return $ Just (parameter, (Nothing, Lambda closure parameters arguments))
         -- If the entity is any other expression, we evaluate it before binding it
         -- to the parameter.
         (Just (_, expression)) -> evaluateBinding (parameter, expression)
@@ -79,7 +73,7 @@ evaluateCall :: Expression -> [Expression] -> Runtime Expression
 evaluateCall (Reference reference) arguments = do
     entity <- evaluate (Reference reference)
     case (entity) of
-      (Lambda closureId parameters expression) -> evaluateCallable parameters arguments expression
+      (Lambda closure parameters expression) -> evaluateCallable closure parameters arguments expression
       _ -> do
         return $ Elementary (EError "Can only call lambdas")
 evaluateCall (Foreign reference) arguments = do
@@ -98,11 +92,11 @@ evaluateCall (Foreign reference) arguments = do
           --liftIO $ action arguments'
     _ -> return $ Elementary (EError "No such foreign function")
 
-evaluateCall (Lambda _ parameters expression) arguments = evaluateCallable parameters arguments expression
+evaluateCall (Lambda closure parameters expression) arguments = evaluateCallable closure parameters arguments expression
 evaluateCall (Call expression arguments) outerArguments = do
   callee <- evaluateCall expression arguments
   case callee of
-    (Lambda _ parameters expression) -> evaluateCallable parameters outerArguments expression
+    (Lambda closure parameters expression) -> evaluateCallable closure parameters outerArguments expression
     _ -> return $ Elementary (EError "Callees must evaluate to lambdas")
   evaluateCall callee outerArguments
 evaluateCall expression arguments = do
@@ -149,15 +143,16 @@ entity reference = do
 
 
 
-evaluateCallable :: [String]->[Expression]->Expression->Runtime Expression
+evaluateCallable :: [(String, Expression)]->[String]->[Expression]->Expression->Runtime Expression
 -- A call can only be resolved if the number of parameters (arity)
 -- matches the number of present arguments in the call expression.
-evaluateCallable parameters arguments expression = do
+evaluateCallable closure parameters arguments expression = do
     let arity = (length parameters)
     let argumentsLength = (length arguments)
     if (arity == argumentsLength)
       then do
-        bindings <- createBindings parameters arguments
+        let (closureParams,closureArgs) = unzip closure
+        bindings <- createBindings (closureParams++parameters) (closureArgs ++ arguments)
         case bindings of
           Nothing -> return $ Elementary (EError "Argument error")
           Just validBindings -> do
@@ -175,8 +170,8 @@ evaluateCallable parameters arguments expression = do
             -- the local bindings are abolished by restoring the old scope.
             put preCallScope
             return result'
-      else return $ Elementary (EError ("Arity mismatch: "++"expected "++(show arity)++", actual "++(show argumentsLength)))
-
+      -- partial application
+    else return $ Lambda (zip (take argumentsLength parameters) (arguments)) (drop argumentsLength parameters) expression
 
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Expression

@@ -2,7 +2,7 @@
 -- this is a comment
 
 -- assignment
-
+(@print (@randInt 1 2))
 myInt = 10
 myFloat = 10.0
 myString = "Hello world"
@@ -26,9 +26,6 @@ functionResult = (add
 )
 
 
--- or the syntactic sugar number[x]
-ms = 0.001
-time = 1[ms]
 
 
 x = 1
