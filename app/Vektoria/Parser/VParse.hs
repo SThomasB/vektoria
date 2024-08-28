@@ -89,14 +89,6 @@ weakStatement = do
   return $ Weak expr
 
 
-timesBracket :: Parser [Token] Expression
-timesBracket = do
-  left <- factor
-  symbolSatisfy (== SLeftBracket)
-  right <- parseExpression
-  symbolSatisfy (== SRightBracket)
-  return $ Binary Multiply left right
-
 
 functionCall :: Parser [Token] Expression
 functionCall = do
@@ -105,7 +97,7 @@ functionCall = do
   args <- some parseExpression
   symbolSatisfy (==SRightParen)
   case callee of
-    (Lambda _ parameters body) -> return $ Call (Lambda Nothing parameters body) args
+    (Lambda _ parameters body) -> return $ Call (Lambda [] parameters body) args
     (Call expression arguments ) -> return $ Call (Call expression arguments) args
     (Reference ref) -> return $ Call (Reference ref) args
 
@@ -118,7 +110,7 @@ letInExpression = do
   let arguments = map expression bindings
   symbolSatisfy (==SIn)
   body <- parseExpression
-  return $ Call (Lambda Nothing parameters body) arguments
+  return $ Call (Lambda [] parameters body) arguments
 
 
 
@@ -129,13 +121,12 @@ lambda = do
   symbolSatisfy (==SComma)
   body <- parseExpression
   symbolSatisfy (==SRightParen)
-  return $ Lambda Nothing parameters body
+  return $ Lambda [] parameters body
 
 
 parseExpression :: Parser [Token] Expression
 parseExpression = do
-  timesBracket
-  <|> lambda
+  lambda
   <|> binaryExpression
     [ Plus
     , Minus
@@ -212,10 +203,15 @@ foreignCall = do
          else return $ Call (Foreign reference) expressions
     else return $ Call (Foreign reference) expressions
 
-
+parseChain = do
+  token <- symbolSatisfy (==SLeftBracket)
+  elements <- some parseExpression
+  token <- symbolSatisfy (==SRightBracket)
+  return $  Chain elements
 literalExpr :: Parser [Token] Expression
 literalExpr = do
-  parseReference
+  parseChain
+  <|> parseReference
   <|> do
     token <- symbolSatisfy (== SString)
     return $ Elementary (EString ((init . tail) $ lexeme token))

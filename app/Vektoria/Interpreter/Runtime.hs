@@ -6,13 +6,10 @@ import Vektoria.Lib.Data.Expression
 import Vektoria.Lib.Data.Element
 import System.CPUTime
 import Data.Unique
+import System.Random (randomRIO)
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
-type Closures = HashMap.HashMap Unique Scope
-
-
 type Entity = (Maybe Metadata, Expression)
-
 
 data Metadata = Metadata {
     typeSignature :: Maybe String
@@ -21,41 +18,20 @@ data Metadata = Metadata {
 emptyMetadata :: Metadata
 emptyMetadata = Metadata {typeSignature=Nothing}
 
-
 data RuntimeError = RuntimeError {
     message :: String
 } deriving (Show)
 
-
-
 data RuntimeState = RuntimeState
   { scope :: Scope
   , ffi :: Scope
-  , closures :: Closures
   , errors :: [RuntimeError]
   }
 instance Show RuntimeState where
   show s = (show (scope s ))
 
-
-initRuntime::RuntimeState
-initRuntime=RuntimeState {closures=initClosures, scope=initScope, ffi=initFFI, errors=[]}
-
-initClosures :: Closures
-initClosures = HashMap.empty
-createClosure :: Runtime ()
-createClosure = do
-  id <- liftIO $ newUnique
-  modify $ \s -> s {closures=HashMap.insert id HashMap.empty (closures s)}
-  where
-
-addToClosure :: Unique -> String -> Entity -> Runtime ()
-addToClosure id name entity = do
-  closures' <- gets closures
-  closure' <- case HashMap.lookup id closures' of
-    Just closure -> return $ HashMap.insert name entity closure
-    Nothing -> error "No such closure id exists"
-  modify $ \s -> s {closures=HashMap.insert id closure' (closures')}
+initRuntime :: RuntimeState
+initRuntime = RuntimeState {scope=initScope, ffi=initFFI, errors=[]}
 
 getEntity, getForeign :: String -> Runtime (Maybe Entity)
 getEntity name = do
@@ -66,34 +42,25 @@ getForeign name = do
   foreignEntities <- gets ffi
   return $ foreignEntities `named` name
 
-
 addEntity :: String -> (Maybe Metadata, Expression) -> Runtime ()
 addEntity name (metadata, expression) = modify $ \s -> s { scope = HashMap.insert name (metadata, expression) (scope s) }
 
-
 addError :: String -> Runtime ()
 addError message = modify $ \s -> s { errors = (errors s) ++ [RuntimeError message] }
-
 
 initScope, initFFI :: Scope
 initScope = HashMap.fromList testLambdas
 initFFI = HashMap.fromList foreignFunctions
 
-
 named :: Scope -> String -> (Maybe Entity)
 scope `named` name = HashMap.lookup name scope
-
 
 newScope :: RuntimeState -> [(String, Entity)] -> RuntimeState
 newScope state newEntities =
     state { scope = HashMap.union (HashMap.fromList newEntities) (scope state)}
 
-
-
 addLambda :: Entity
-addLambda = (Nothing, Lambda Nothing ["a", "b", "c"] (Binary Plus (Reference "a") (Binary Plus (Reference "b") (Reference "c"))))
-
-
+addLambda = (Nothing, Lambda [] ["a", "b", "c"] (Binary Plus (Reference "a") (Binary Plus (Reference "b") (Reference "c"))))
 
 testLambdas :: [(String, Entity)]
 testLambdas = [("add", addLambda)]
@@ -103,11 +70,23 @@ foreignFunctions =
                  [("print", (Nothing, IOAction printFFI))
                  ,("probe", (Nothing, IOAction probeFFI))
                  ,("user" , (Nothing, IOAction getInputFFI))
+                 ,("userInt", (Nothing, IOAction getIntFFI))
                  ,("cpuTime", (Nothing, IOAction cpuTimeFFI))
                  ,("file", (Nothing, IOAction fileFFI))
+                 ,("randInt", (Nothing, IOAction randIntFFI))
                  ]
 
 -- FFI
+randIntFFI :: [Expression] -> IO Expression
+randIntFFI [] = return $ Elementary $ (EError "@randInt requires two integer values")
+randIntFFI (x:xs) = do
+  let (Elementary (EInt v)) = x
+  let (Elementary (EInt g)) = getSndArg xs
+  res <- randomRIO (v, g)
+  return $ Elementary (EInt res)
+  where
+    getSndArg [] = Elementary (EInt 9999999)
+    getSndArg xs = head xs
 
 printFFI, probeFFI :: [Expression] -> IO Expression
 fileFFI [] = return $ Elementary (EError "@file requires at least one argument")
@@ -120,6 +99,9 @@ printFFI [] = do
 printFFI [Elementary element] = do
   putStrLn $ showElement element
   return $ Elementary EVoid
+printFFI [Chain expressions] = do
+ putStrLn $ showHL (Chain expressions)
+ return $ Elementary EVoid
 printFFI expressions = do
   mapM (putStrLn . showElement . extractElement) expressions
   return $ Elementary EVoid
@@ -140,6 +122,7 @@ getInputFFI [] = do
     value <- getLine
     return $ Elementary (EString value)
 
+
 getInputFFI [Elementary (EString value)] = do
     putStr value
     value <- getLine
@@ -148,6 +131,10 @@ getInputFFI [Elementary (EString value)] = do
 getInputFFI [expression] = do
     value <- getLine
     return $ Elementary (EString value)
+
+getIntFFI [] = do
+  value <- getLine
+  return $ Elementary (EInt $ read value)
 
 cpuTimeFFI [] = do
   value <- getCPUTime

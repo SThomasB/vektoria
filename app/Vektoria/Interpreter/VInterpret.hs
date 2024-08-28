@@ -59,9 +59,7 @@ interpreter echo stmt = case stmt of
       _ -> if echo
              then do
                expression' <- evaluate expr
-               case expression' of
-                 (Elementary element) -> liftIO $ putStrLn (showElement element)
-                 _ -> liftIO $ putStrLn (show expression')
+               liftIO $ putStrLn (showHL expression')
              else
                return ()
 

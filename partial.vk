@@ -1,0 +1,9 @@
+iter = (n f,
+  let work=(
+        a _, ? a<n -> (work (a+1) (f a)) | _
+    ) in (work 0 f)
+)
+
+do10 = (iter 10)
+(do10 (x, (@print "line: "+x)))
+

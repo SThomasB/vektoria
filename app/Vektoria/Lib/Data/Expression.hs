@@ -1,17 +1,18 @@
 module Vektoria.Lib.Data.Expression where
 import Vektoria.Lib.Data.Element
 import Data.Unique
-
+import Data.List
 
 
 
 data Expression
   = Elementary { element :: Element }
+  | Chain { expressions :: [Expression] }
   | Reference { reference :: String }
   | Foreign { reference :: String}
   | Binary { operator:: Operator, left::Expression, right::Expression }
   | Tertiary { condition :: Expression, left :: Expression, right :: Expression}
-  | Lambda { closureId :: Maybe Unique,  parameters :: [String],  computation :: Expression }
+  | Lambda { closure :: [(String, Expression)],  parameters :: [String],  computation :: Expression }
   | Call { function :: Expression, arguments :: [Expression] }
   | IOAction { action :: ([Expression] ->  IO Expression) }
 
@@ -19,6 +20,8 @@ data Expression
 
 instance Show Expression where
   show (Elementary element) = "Element: " ++ show element
+  show (Chain []) = "Chain: []"
+  show (Chain xs) = "Chain: " ++ (concat $ map show xs)
   show (Binary op expr2 expr3) =
     "Binary Expression: (" ++
     show op ++ ", " ++ show expr2 ++ ", " ++ show expr3 ++ ")"
@@ -29,6 +32,9 @@ instance Show Expression where
   show (IOAction _) = "<:IO"
   show (Foreign reference) = "Foreign "++ reference
 
+showHL (Elementary element) = showElement element
+showHL (Chain expr) = "[" ++ ((concat . (intersperse " ")) (map showHL expr)) ++"]"
+showHL expr = show expr
 
 data Operator
   = Plus
