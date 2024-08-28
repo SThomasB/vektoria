@@ -83,12 +83,14 @@ evaluateCall (Foreign reference) arguments = do
       case arguments of
         [] -> liftIO $ action []
         _ -> do
-          returns <- forM arguments (\arg -> do
-            argument' <- evaluate arg
-            liftIO $ action [argument'])
-          case returns of
-            [] -> return $ Elementary (EVoid)
-            _ -> return $ last returns
+          arguments' <- forM arguments  $ \arg -> do
+                argument' <- evaluate arg
+                return argument'
+          result <- liftIO $ action arguments'
+          --returns <- forM arguments (\arg -> do
+            --argument' <- evaluate arg
+            --liftIO $ action [argument'])
+          return $ result
           --liftIO $ action arguments'
     _ -> return $ Elementary (EError "No such foreign function")
 
@@ -146,6 +148,9 @@ entity reference = do
 evaluateCallable :: [(String, Expression)]->[String]->[Expression]->Expression->Runtime Expression
 -- A call can only be resolved if the number of parameters (arity)
 -- matches the number of present arguments in the call expression.
+evaluateCallable closure [p] [(Chain arguments)] expression = do
+   Chain <$> sequence (map (\x -> evaluateCallable closure [p] [x] expression) arguments)
+
 evaluateCallable closure parameters arguments expression = do
     let arity = (length parameters)
     let argumentsLength = (length arguments)
@@ -172,7 +177,6 @@ evaluateCallable closure parameters arguments expression = do
             return result'
       -- partial application
     else return $ Lambda (zip (take argumentsLength parameters) (arguments)) (drop argumentsLength parameters) expression
-
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Expression
 evaluate (Foreign reference) = do
@@ -207,6 +211,8 @@ evaluate (Tertiary condition left right) = do
     _ -> return $ Elementary (EError "Expected boolean in ternary condition")
 -- comparisons
 -- And
+evaluate (Chain []) = return $ Chain []
+evaluate (Chain xs) = Chain <$> (sequence $ (map evaluate xs))
 evaluate (Binary And (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ Elementary (EBool (left && right))
 evaluate (Binary Or (Elementary (EBool left)) (Elementary (EBool right))) =

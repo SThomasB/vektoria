@@ -1,5 +1,4 @@
 -- guessing game
---
 
 winMessage = "You guessed the correct number!"
 wrongMessage = (guess,
@@ -7,22 +6,22 @@ wrongMessage = (guess,
       "Your guess was smaller"
     | "Your guess was larger"
 )
-secretNumber = 20
 
+
+secretNumber = (@randInt 0 100)
 (@print "Welcome to the guessing game!"
         "Please enter your guess:"
 )
 program = (_ guess,
     ? guess==secretNumber ->
       (@print winMessage)
-    | ( program
+    | (program
         (@print
           (wrongMessage guess)+", try again: "
         )
         @userInt
       )
 )
-
 
 (program (_,_) (@userInt))
 

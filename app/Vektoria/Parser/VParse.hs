@@ -203,10 +203,15 @@ foreignCall = do
          else return $ Call (Foreign reference) expressions
     else return $ Call (Foreign reference) expressions
 
-
+parseChain = do
+  token <- symbolSatisfy (==SLeftBracket)
+  elements <- some parseExpression
+  token <- symbolSatisfy (==SRightBracket)
+  return $  Chain elements
 literalExpr :: Parser [Token] Expression
 literalExpr = do
-  parseReference
+  parseChain
+  <|> parseReference
   <|> do
     token <- symbolSatisfy (== SString)
     return $ Elementary (EString ((init . tail) $ lexeme token))

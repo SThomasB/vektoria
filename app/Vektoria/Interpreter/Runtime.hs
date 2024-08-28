@@ -6,7 +6,7 @@ import Vektoria.Lib.Data.Expression
 import Vektoria.Lib.Data.Element
 import System.CPUTime
 import Data.Unique
-import System.Random (mkStdGen, uniformR)
+import System.Random (randomRIO)
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
 type Entity = (Maybe Metadata, Expression)
@@ -81,10 +81,13 @@ randIntFFI :: [Expression] -> IO Expression
 randIntFFI [] = return $ Elementary $ (EError "@randInt requires two integer values")
 randIntFFI (x:xs) = do
   let (Elementary (EInt v)) = x
-  let [(Elementary (EInt g))] = xs
-  let pureGen = mkStdGen 137
-  let (res,_) = uniformR (v, g) pureGen
+  let (Elementary (EInt g)) = getSndArg xs
+  res <- randomRIO (v, g)
   return $ Elementary (EInt res)
+  where
+    getSndArg [] = Elementary (EInt 9999999)
+    getSndArg xs = head xs
+
 printFFI, probeFFI :: [Expression] -> IO Expression
 fileFFI [] = return $ Elementary (EError "@file requires at least one argument")
 fileFFI [Elementary (EString value)] = do
@@ -96,6 +99,9 @@ printFFI [] = do
 printFFI [Elementary element] = do
   putStrLn $ showElement element
   return $ Elementary EVoid
+printFFI [Chain expressions] = do
+ putStrLn $ showHL (Chain expressions)
+ return $ Elementary EVoid
 printFFI expressions = do
   mapM (putStrLn . showElement . extractElement) expressions
   return $ Elementary EVoid

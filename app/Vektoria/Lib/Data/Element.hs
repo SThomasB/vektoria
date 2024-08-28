@@ -17,12 +17,11 @@ instance Show Element where
   show (EVoid) = "Void"
   show (EError e) = "Error: "++e
 
-
 showElement :: Element -> String
-showElement (EString v) = v
+showElement (EString v) = "\""++v++"\""
 showElement (EInt v) = show v
 showElement (EFloat v) = show v
 showElement (EError v) = v
 showElement (EBool v) = show v
-showElement (EVoid) = "<:Void"
+showElement (EVoid) = "Void"
 
