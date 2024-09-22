@@ -4,9 +4,10 @@ import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap
 import Vektoria.Lib.Data.Expression
 import Vektoria.Lib.Data.Element
-import System.CPUTime
+import Data.Time.Clock.System
 import Data.Unique
 import System.Random (randomRIO)
+import System.Directory
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
 type Entity = (Maybe Metadata, Expression)
@@ -49,7 +50,7 @@ addError :: String -> Runtime ()
 addError message = modify $ \s -> s { errors = (errors s) ++ [RuntimeError message] }
 
 initScope, initFFI :: Scope
-initScope = HashMap.fromList testLambdas
+initScope = HashMap.fromList []
 initFFI = HashMap.fromList foreignFunctions
 
 named :: Scope -> String -> (Maybe Entity)
@@ -59,11 +60,6 @@ newScope :: RuntimeState -> [(String, Entity)] -> RuntimeState
 newScope state newEntities =
     state { scope = HashMap.union (HashMap.fromList newEntities) (scope state)}
 
-addLambda :: Entity
-addLambda = (Nothing, Lambda [] ["a", "b", "c"] (Binary Plus (Reference "a") (Binary Plus (Reference "b") (Reference "c"))))
-
-testLambdas :: [(String, Entity)]
-testLambdas = [("add", addLambda)]
 
 foreignFunctions :: [(String, Entity)]
 foreignFunctions =
@@ -74,7 +70,18 @@ foreignFunctions =
                  ,("cpuTime", (Nothing, IOAction cpuTimeFFI))
                  ,("file", (Nothing, IOAction fileFFI))
                  ,("randInt", (Nothing, IOAction randIntFFI))
+                 ,("folder", (Nothing, IOAction folderFFI))
                  ]
+folderFFI :: [Expression] -> IO Expression
+folderFFI [] = do
+    paths <- getDirectoryContents "."
+    return $ Chain (map intoElementaryString paths)
+folderFFI [Elementary (EString path)] = do
+    paths <- getDirectoryContents path
+    return $ Chain (map intoElementaryString paths)
+folderFFI _ = return $ Elementary $ (EError "illegal argument for @folder")
+
+intoElementaryString v = Elementary (EString v)
 
 -- FFI
 randIntFFI :: [Expression] -> IO Expression
@@ -137,10 +144,12 @@ getIntFFI [] = do
   return $ Elementary (EInt $ read value)
 
 cpuTimeFFI [] = do
-  value <- getCPUTime
-  return $ Elementary (EInt $ fromIntegral value)
+  value <- getSystemTime
+  return $ Elementary (EInt $ systemTimeToInt value)
 
 
+systemTimeToInt :: SystemTime -> Int
+systemTimeToInt (MkSystemTime secs _) = fromIntegral secs
 extractElement :: Expression -> Element
 extractElement (Elementary element) = element
 extractElement _ = EVoid

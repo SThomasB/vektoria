@@ -16,18 +16,23 @@ import Control.Monad.State (runStateT)
 userStream = lines <$> getContents
 lexify = zipWith runLex [1..]
 buildAST = map (getStatements . runParse . getTokens)
+
+
+
+runInterpreter statements = runStateT (interpret True statements) initRuntime
+
+
+
 main :: IO ()
 main = do
     args <- getArgs
     case args of
-      [] -> ((map head) <$> buildAST <$> lexify <$> userStream) >>= (\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
+      [] -> ((map head) <$> buildAST <$> lexify <$> userStream) >>= runInterpreter >> putStrLn ""
       ["--lex"] -> (zipWith runLex [1..] ) <$> (lines <$> getContents) >>= (mapM_ print)
       ["--ast"] -> buildAST <$> lexify <$> userStream >>= (mapM_ print)
       ["--de", prg] -> ((map head) <$> buildAST <$> (pure $ lexify (lines prg))) >>=(\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
       [filePath] -> do interpretFile filePath
       _ -> putStrLn "Invalid arguments."
-
-
 
 
 

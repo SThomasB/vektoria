@@ -1,6 +1,0 @@
-
-
-<-@print "say something: "
-<-@print "You said: "+(@user)
-
-

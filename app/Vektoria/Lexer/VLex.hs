@@ -47,6 +47,7 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ leftParenToken lineNr)
     <|> (ignoreSpace $ rightParenToken lineNr)
     <|> (ignoreSpace $ barToken lineNr)
+    <|> (ignoreSpace $ colonToken lineNr)
 
 
 identifierToken :: Int -> Lexer
@@ -60,6 +61,10 @@ parseGlyphToken :: Symbol -> Char -> Int -> Lexer
 parseGlyphToken sym thisGlyph line = do
     glyph thisGlyph
     return $ Token sym line [thisGlyph]
+
+colonToken :: Int -> Lexer
+colonToken = parseGlyphToken SColon ':'
+
 
 atToken :: Int -> Lexer
 atToken = parseGlyphToken SAt '@'

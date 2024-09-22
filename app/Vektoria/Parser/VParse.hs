@@ -33,54 +33,30 @@ getOperator token =
 -- term ::= factor * term | factor
 -- factor ::= (expr) | int
 vektoriaParse :: Parser [Token] Statement
-vektoriaParse = do
-  statement <|> block
-
-
-block :: Parser [Token] Statement
-block = do
-  symbolSatisfy (== SLeftBrace)
-  result <- (many vektoriaParse)
-  symbolSatisfy (== SRightBrace)
-  return $ Block result
+vektoriaParse = statement
 
 
 statement :: Parser [Token] Statement
-statement = do
-  assignStatement <|> weakStatement <|> ifElseStatement <|> printStatement
+statement = reflectStatement <|> assignStatement <|> weakStatement
 
-
-ifElseStatement :: Parser [Token] Statement
-ifElseStatement =
-  do symbolSatisfy (== SIf)
-     condition <- parseExpression
-     thenBlock <- do block <|> printStatement
-     symbolSatisfy (== SElse)
-     elseBlock <- do block <|> ifElseStatement <|> printStatement
-     return $ IfElse condition thenBlock elseBlock
-     <|> do
-    symbolSatisfy (== SIf)
-    condition <- parseExpression
-    thenBlock <- do block <|> printStatement
-    return $ IfElse condition thenBlock (Block [])
-
+reflectStatement :: Parser [Token] Statement
+reflectStatement = do
+    symbolSatisfy (==SDiamond)
+    identifier <- symbolSatisfy (==SIdentifier)
+    return $ Reflect (Elementary $ EString (lexeme identifier))
 
 assignStatement :: Parser [Token] Statement
 assignStatement = do
-  identifier <- symbolSatisfy (== SIdentifier)
+  symbolSatisfy (==SColon)
+  symbolSatisfy (==SColon)
+  identifiers <- some $ symbolSatisfy (== SIdentifier)
   symbolSatisfy (== SEqual)
   modifiers <- many $ symbolSatisfy (==SLeftArrow)
   let modifier = if (length modifiers)==0 then [] else [Eager]
   expr <- letInExpression <|> parseExpression <|> lambda
-  let entityName = lexeme identifier
-  return (Assign modifier entityName expr)
-
-
-printStatement :: Parser [Token] Statement
-printStatement = do
-  symbolSatisfy (== SPrint)
-  expr <- parseExpression
-  return (Print $ expr)
+  case map lexeme identifiers of
+    (n:[]) -> return (Assign modifier n expr)
+    (n:argNames) -> return (Assign modifier n (Lambda [] argNames expr))
 
 
 weakStatement :: Parser [Token] Statement

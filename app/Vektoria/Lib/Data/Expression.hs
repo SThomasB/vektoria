@@ -19,7 +19,7 @@ data Expression
 
 
 instance Show Expression where
-  show (Elementary element) = "Element: " ++ show element
+  show (Elementary element) = "Element: " ++ (showElement element)
   show (Chain []) = "Chain: []"
   show (Chain xs) = "Chain: " ++ (concat $ map show xs)
   show (Binary op expr2 expr3) =

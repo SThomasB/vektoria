@@ -1,0 +1,21 @@
+-- guessing game
+
+::
+displayStartMessage = @print "Welcome to the guessing game!"
+                             "Please enter your guess:"
+::
+winMessage = "You guessed the correct number!"
+
+::
+wrongMessage guess = @print ? guess < secretNumber ->
+  "Your guess was smaller, try again: " | "Your guess was larger, try again: "
+
+::
+secretNumber = ( @randInt 0 100 )
+
+::
+program _ guess = ? guess==secretNumber ->
+  (@print winMessage) | (program (wrongMessage guess) @userInt)
+
+(program displayStartMessage @userInt)
+

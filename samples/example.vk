@@ -1,0 +1,67 @@
+
+--definition
+::
+prepend b c = b + c
+
+--function application
+::
+flip f a b = (f b a)
+
+::
+appendDot = (flip prepend ".")
+
+--vectorized application
+::
+sentences = (appendDot ["A blue car" "A long road"])
+
+(@print sentences)
+--prints ["A blue car." "A long road."]
+
+-- inspect state
+<> state
+-------------------
+--local definitions
+::
+letIn b = let :: it = (a, a)
+              :: double a = a*2
+              in (double (it b))
+
+
+-- @ functions evaluates and takes all expressions after it
+-- as arguments
+-- this combined with the let in expression lets you auto print results
+:: message = "hello"
+:: numbers = [1 2 3]
+:: files =<- (@folder)
+@print
+  (files 0)
+  (files 1)
+  (@file (files 1))
+  (message 0)
+  (message 1)
+  (message 2)
+  (message 3)
+  (message 4)
+  (message 5)
+  (letIn 2)
+
+  let :: it = (a, a)
+      :: double = (a, a*2)
+      in (double (it 2))
+
+  1+2
+
+  let :: a = 10
+      :: b = 20
+      in a*b
+
+  ? (@randInt 0 10) > 5 ->
+  "larger than 5" | "less than or equal to 5"
+
+  let :: first = (@randInt 0 100)
+      :: snd = (@randInt 0 100)
+      in ? first < snd ->
+        "first was largest" | "second was largest"
+
+
+

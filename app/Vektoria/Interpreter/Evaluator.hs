@@ -66,6 +66,20 @@ createBindings parameters arguments = do
         expression -> return $ Just (parameter, (Nothing, expression))
 
 
+evaluateChainCall (Chain []) [] = return $ (Chain [])
+evaluateChainCall (Chain []) _  = return $ Elementary (EError "Empty chain cannot be indexed")
+evaluateChainCall (Chain xs) [(Elementary (EInt v))]
+  | v >= length xs = return $ Elementary (EError "String out of bounds")
+  | otherwise = return $ xs!!v
+evaluateChainCall _ _ = return $ Elementary (EError "Indexing operation unknown")
+
+evaluateStringCall "" [] = return $ Elementary (EString "")
+evaluateStringCall "" _ = return $ Elementary (EError "Empty string cannot be indexed")
+evaluateStringCall xs [(Elementary (EInt v))]
+  | v >= length xs = return $ Elementary (EError "String out of bounds")
+  | otherwise = return $ Elementary (EString [xs!!v])
+evaluateStringCall _ _ = return $ Elementary (EError "Indexing operation unknown")
+
 evaluateCall :: Expression -> [Expression] -> Runtime Expression
 -- Calls can be made via reference, or directly to a Lambda expression.
 -- If the callee is a reference, we resolve the indirection before evaluating
@@ -74,6 +88,8 @@ evaluateCall (Reference reference) arguments = do
     entity <- evaluate (Reference reference)
     case (entity) of
       (Lambda closure parameters expression) -> evaluateCallable closure parameters arguments expression
+      (Elementary (EString xs)) -> evaluateStringCall xs arguments
+      (Chain xs) -> evaluateChainCall (Chain xs) arguments
       _ -> do
         return $ Elementary (EError "Can only call lambdas")
 evaluateCall (Foreign reference) arguments = do
