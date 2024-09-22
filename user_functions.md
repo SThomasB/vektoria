@@ -18,11 +18,10 @@ y = ((a, a+1) 3)
 -- functions can have 0 parameters,
 y = ((, 2))
 
--- Are functions closures?
+-- Functions capture variables from parent scope
 b = 10
-z = (, b+5)
--- should be 15
-Print (z)
+z = (, b+5) -- b= 10 in z
+
 
 ```
 
