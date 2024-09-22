@@ -7,10 +7,9 @@ data Modifier = Eager deriving Show
 data Statement
     =
     Block [Statement]
-    | IfElse Expression Statement Statement
     | Assign {modifiers::[Modifier], name::String, expression :: Expression}
-    | Print Expression
     | Weak Expression
+    | Reflect Expression
     deriving Show
 
 

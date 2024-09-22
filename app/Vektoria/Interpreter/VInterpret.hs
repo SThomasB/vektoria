@@ -27,20 +27,14 @@ assign [] name expression = do
 
 interpreter :: Bool -> Statement -> Runtime ()
 interpreter echo stmt = case stmt of
-  IfElse condition thenBlock elseBlock -> do
-    result <- evaluate condition
-    case result of
-        (Elementary (EError e)) -> addError (e)
-        (Elementary (EBool True)) -> interpreter False thenBlock
-        (Elementary (EBool False)) -> interpreter False elseBlock
-        _ -> addError ("Expected a boolean in if condition")
-  Block thisBlock -> interpretBlock False thisBlock
-
+  (Reflect (Elementary (EString s))) -> do
+    case s of
+      "state" -> do
+        state <- get
+        liftIO $ print state
+      _ -> liftIO $ putStrLn (s ++ "is not a known reflection")
   (Assign modifiers name expression) -> do
     assign modifiers name expression
-
-  Print expr -> do
-    liftIO $ print expr
   Weak expr -> do
     case expr of
       (Reference reference) -> do

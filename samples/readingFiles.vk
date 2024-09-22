@@ -1,0 +1,5 @@
+-- read a file
+::
+file = (@file "guessingGame.vk")
+
+@print file
