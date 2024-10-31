@@ -18,7 +18,7 @@ instance Show Element where
   show (EError e) = "Error: "++e
 
 showElement :: Element -> String
-showElement (EString v) = "\""++v++"\""
+showElement (EString v) = v
 showElement (EInt v) = show v
 showElement (EFloat v) = show v
 showElement (EError v) = v

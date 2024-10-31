@@ -1,5 +1,5 @@
 -- read a file
 ::
-file = (@file "guessingGame.vk")
-
-@print file
+files = (@folder)
+(@print @file (files 0))
+(@print @file (files 1))

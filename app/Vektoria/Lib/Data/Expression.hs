@@ -15,6 +15,7 @@ data Expression
   | Lambda { closure :: [(String, Expression)],  parameters :: [String],  computation :: Expression }
   | Call { function :: Expression, arguments :: [Expression] }
   | IOAction { action :: ([Expression] ->  IO Expression) }
+  | Primitive{ func :: ([Expression] -> Expression) }
 
 
 
@@ -33,8 +34,11 @@ instance Show Expression where
   show (Foreign reference) = "Foreign "++ reference
 
 showHL (Elementary element) = showElement element
-showHL (Chain expr) = "[" ++ ((concat . (intersperse " ")) (map showHL expr)) ++"]"
+showHL (Chain expr) = "[" ++ ((concat . (intersperse " ")) (map showChain expr)) ++"]"
 showHL expr = show expr
+
+showChain (Elementary (EString v)) = "\""++v++"\""
+showChain expr = showHL expr
 
 data Operator
   = Plus
