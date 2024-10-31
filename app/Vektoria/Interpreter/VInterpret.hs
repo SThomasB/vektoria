@@ -13,7 +13,7 @@ import Control.Monad (foldM)
 import Control.Monad.State
 
 
-interpret :: Bool -> [Statement] -> Runtime ()
+interpret :: Bool -> [Maybe Statement] -> Runtime ()
 interpret echo = mapM_ (interpreter echo)
 
 
@@ -25,47 +25,40 @@ assign [Eager] name expression = do
 assign [] name expression = do
     addEntity name (Nothing, expression)
 
-interpreter :: Bool -> Statement -> Runtime ()
+interpreter :: Bool -> Maybe Statement -> Runtime ()
 interpreter echo stmt = case stmt of
-  (Reflect (Elementary (EString s))) -> do
-    case s of
-      "state" -> do
-        state <- get
-        liftIO $ print state
-      _ -> liftIO $ putStrLn (s ++ "is not a known reflection")
-  (Assign modifiers name expression) -> do
-    assign modifiers name expression
-  Weak expr -> do
-    case expr of
-      (Reference reference) -> do
-        maybeEntity <- getEntity reference
-        case maybeEntity of
-          Just (meta, expression) -> do
-            expression' <- evaluate expression
-            addEntity reference (meta, expression')
+  Nothing -> liftIO $ putStrLn "!syntax error"
+  (Just v) -> case v of
+    (Reflect (Elementary (EString s))) -> do
+      case s of
+        "state" -> do
+          state <- get
+          liftIO $ print state
+        _ -> liftIO $ putStrLn (s ++ "is not a known reflection")
+    (Assign modifiers name expression) -> do
+      assign modifiers name expression
+    Weak expr -> do
+      case expr of
+        (Reference reference) -> do
+          maybeEntity <- getEntity reference
+          case maybeEntity of
+            Just (meta, expression) -> do
+              expression' <- evaluate expression
+              addEntity reference (meta, expression')
 
-            return ()
-          Nothing -> addError ("Reference error")
-      (Call expression arguments) -> do
-            evaluate (Call expression arguments)
-            return ()
-      (Elementary (EError message)) -> addError (message)
-      _ -> if echo
-             then do
-               expression' <- evaluate expr
-               liftIO $ putStrLn (showHL expression')
-             else
-               return ()
+              return ()
+            Nothing -> addError ("Reference error")
+        (Call expression arguments) -> do
+              evaluate (Call expression arguments)
+              return ()
+        (Elementary (EError message)) -> addError (message)
+        _ -> if echo
+               then do
+                 expression' <- evaluate expr
+                 liftIO $ putStrLn (showHL expression')
+               else
+                 return ()
 
-
-
-interpretBlock :: Bool -> [Statement] -> Runtime ()
-interpretBlock commit statements = do
-  oldState <- get
-  interpret False statements
-  if commit
-    then return ()
-    else put oldState
 
 
 

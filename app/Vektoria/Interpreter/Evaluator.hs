@@ -71,6 +71,9 @@ evaluateChainCall (Chain []) _  = return $ Elementary (EError "Empty chain canno
 evaluateChainCall (Chain xs) [(Elementary (EInt v))]
   | v >= length xs = return $ Elementary (EError "String out of bounds")
   | otherwise = return $ xs!!v
+evaluateChainCall (Chain xs) [(Reference r)] = do
+  r' <- (dereference (Reference r))
+  evaluateChainCall (Chain xs) [r']
 evaluateChainCall _ _ = return $ Elementary (EError "Indexing operation unknown")
 
 evaluateStringCall "" [] = return $ Elementary (EString "")
@@ -78,6 +81,9 @@ evaluateStringCall "" _ = return $ Elementary (EError "Empty string cannot be in
 evaluateStringCall xs [(Elementary (EInt v))]
   | v >= length xs = return $ Elementary (EError "String out of bounds")
   | otherwise = return $ Elementary (EString [xs!!v])
+evaluateStringCall xs [(Reference r)] = do
+  r' <- (dereference (Reference r))
+  evaluateStringCall xs [r']
 evaluateStringCall _ _ = return $ Elementary (EError "Indexing operation unknown")
 
 evaluateCall :: Expression -> [Expression] -> Runtime Expression
@@ -108,6 +114,11 @@ evaluateCall (Foreign reference) arguments = do
             --liftIO $ action [argument'])
           return $ result
           --liftIO $ action arguments'
+    (Primitive func) -> do
+      arguments' <- forM arguments $ \arg -> do
+        argument' <- evaluate arg
+        return argument'
+      return $ func arguments'
     _ -> return $ Elementary (EError "No such foreign function")
 
 evaluateCall (Lambda closure parameters expression) arguments = evaluateCallable closure parameters arguments expression

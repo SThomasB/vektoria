@@ -8,6 +8,7 @@ import Data.Time.Clock.System
 import Data.Unique
 import System.Random (randomRIO)
 import System.Directory
+import System.Environment
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
 type Entity = (Maybe Metadata, Expression)
@@ -71,7 +72,27 @@ foreignFunctions =
                  ,("file", (Nothing, IOAction fileFFI))
                  ,("randInt", (Nothing, IOAction randIntFFI))
                  ,("folder", (Nothing, IOAction folderFFI))
+                 ,("args", (Nothing, IOAction argsFFI))
+                 ,("len", (Nothing, Primitive lenFFI))
                  ]
+lenFFI :: [Expression] -> Expression
+lenFFI [Chain (expressions)] = Elementary
+  $ EInt
+  $ length
+  $ expressions
+lenFFI [(Elementary (EString v))] = Elementary
+ $ EInt
+ $ length
+ $ v
+
+lenFFI _ = Elementary $ (EError "len is only defined for chains")
+
+argsFFI [] = do
+  args <- getArgs
+  return $ Chain (map intoElementaryString args)
+
+argsFFI _ = return $ Elementary $ (EError "illegal argument for @args")
+
 folderFFI :: [Expression] -> IO Expression
 folderFFI [] = do
     paths <- getDirectoryContents "."
@@ -145,7 +166,7 @@ getIntFFI [] = do
 
 cpuTimeFFI [] = do
   value <- getSystemTime
-  return $ Elementary (EInt $ systemTimeToInt value)
+  return $ Elementary (EInt $ systemTimeToInt $ value)
 
 
 systemTimeToInt :: SystemTime -> Int

@@ -27,15 +27,17 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-      [] -> ((map head) <$> buildAST <$> lexify <$> userStream) >>= runInterpreter >> putStrLn ""
+      [] -> ((map safeHead) <$> buildAST <$> lexify <$> userStream) >>= runInterpreter >> putStrLn ""
       ["--lex"] -> (zipWith runLex [1..] ) <$> (lines <$> getContents) >>= (mapM_ print)
       ["--ast"] -> buildAST <$> lexify <$> userStream >>= (mapM_ print)
-      ["--de", prg] -> ((map head) <$> buildAST <$> (pure $ lexify (lines prg))) >>=(\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
-      [filePath] -> do interpretFile filePath
+      ["--de", prg] -> ((map safeHead) <$> buildAST <$> (pure $ lexify (lines prg))) >>=(\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
+      (filePath:_)-> do interpretFile filePath
       _ -> putStrLn "Invalid arguments."
 
 
-
+safeHead [] = Nothing
+safeHead (s:_) = Just s
+toMaybe s = Just s
 interpretFile :: String -> IO ()
 interpretFile filePath = do
   content <- readFile filePath
@@ -52,7 +54,7 @@ interpretFile filePath = do
       if isValidAst
         then do
           let statementStream = concat (map fst ast)
-          (_, finalState) <- runStateT (interpret False statementStream) initRuntime
+          (_, finalState) <- runStateT (interpret False (map toMaybe statementStream)) initRuntime
           --putStrLn ""
           --putStrLn "Accrued errors:"
           --mapM print (zip [1..] (errors finalState))

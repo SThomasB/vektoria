@@ -1,0 +1,25 @@
+
+::
+args=<-@args
+
+::
+nArgs=<-@len args
+
+::
+enum f = let :: work i _ = ? i==nArgs ->
+                      _ | (work (i+1) (f i (args i)))
+        in (work 1 0)
+        -- start at 1 to skip first argument since this is the program
+
+::
+print x = (@print x)
+
+::
+f i it = (print ""+i+". "+it)
+
+(enum f)
+
+
+
+
+

@@ -1,11 +1,15 @@
-
-
 ::
 fib n a b = ? n == 1 ->
           (a) | (fib n-1 b a+b)
 
-@print "The 40th fib number is: "
-        (fib 40 0 1)
+(@print "Enter a positive number: ")
+
+::
+inp=<-let ::query x = ? x > 0 ->
+                     x | (query @userInt)
+      in (query 0)
+
+@print "The "+inp+". fib number is: "+(fib inp 0 1)
 
 
 
