@@ -6,7 +6,7 @@ fib n a b = ? n == 1 ->
 
 ::
 inp=<-let ::query x = ? x > 0 ->
-                     x | (query @userInt)
+                      x | (query @userInt)
       in (query 0)
 
 @print "The "+inp+". fib number is: "+(fib inp 0 1)

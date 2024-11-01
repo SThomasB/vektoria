@@ -1,0 +1,31 @@
+
+::
+args =<-(@args)
+
+
+::
+arg =<-(args 1)
+
+::
+powTen n = let ::work acc i = ? n == i -> acc
+                              |
+                      (work acc*10 i+1)
+           in (work 1 1)
+
+::
+toDigit c = (@ascii c) - 48
+
+
+::
+len =<-(@len arg)
+
+::
+parse string = let ::work acc i = ? i == len -> acc
+                                  |
+                 (work acc+(toDigit (string i))*(powTen len-i) i+1)
+               in (work 0 0)
+
+
+@print
+  "Parsed the string " + arg +" to int..."
+  arg +" * 2 = "+(parse arg)*2
