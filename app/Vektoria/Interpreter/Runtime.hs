@@ -6,6 +6,7 @@ import Vektoria.Lib.Data.Expression
 import Vektoria.Lib.Data.Element
 import Data.Time.Clock.System
 import Data.Unique
+import Data.Char (ord)
 import System.Random (randomRIO)
 import System.Directory
 import System.Environment
@@ -74,7 +75,17 @@ foreignFunctions =
                  ,("folder", (Nothing, IOAction folderFFI))
                  ,("args", (Nothing, IOAction argsFFI))
                  ,("len", (Nothing, Primitive lenFFI))
+                 ,("ascii", (Nothing, Primitive asciiFFI))
                  ]
+
+asciiFFI :: [Expression] -> Expression
+asciiFFI [Elementary (EString (v:[]))] = Elementary
+  $ EInt
+  $ ord
+  $ v
+asciiFFI _ = Elementary
+  $ EError
+  $ "ascii is only defined for single characters"
 lenFFI :: [Expression] -> Expression
 lenFFI [Chain (expressions)] = Elementary
   $ EInt

@@ -1,13 +1,16 @@
 ::
-file=<-(let ::args=(@args)
-  in (@file (args 1)))
+file=<-let ::args=(@args)
+       in (@file (args 1))
 ::
 lenFile=<-(@len file)
-::
-countSpace = let ::work count it = ? it==lenFile ->
-                    count | let ::newCount = ? (file it)==" " ->
-                                 (count + 1) | count
-                            in (work newCount (it+1))
-               in (work 0 0)
-@print (countSpace)
+
+@print
+  let ::countSpaces count i = ? i==lenFile ->
+                  count | let ::newCount = ? (file i)==" " ->
+                               (count + 1) | count
+                          in (countSpaces newCount (i+1))
+      :: initCount = 0
+      :: initIndex = 0
+  in (countSpaces initCount initIndex)
+
 
