@@ -9,23 +9,20 @@ vektoriaLex :: Int -> Lexer
 vektoriaLex lineNr = do
      (ignoreSpace $ letToken lineNr)
     <|> (ignoreSpace $ inToken lineNr)
-    <|> (ignoreSpace $ identifierToken lineNr)
-    <|> (ignoreSpace $ leftArrowToken lineNr)
-    <|> (ignoreSpace $ atToken lineNr)
-    <|> (ignoreSpace $ rightArrowToken lineNr)
-    <|> (ignoreSpace $ questionToken lineNr)
-    <|> (ignoreSpace $ ifToken lineNr)
-    <|> (ignoreSpace $ elseToken lineNr)
-    <|> (ignoreSpace $ commaToken lineNr)
-    <|> (ignoreSpace $ minusMinusToken lineNr)
-    <|> (ignoreSpace $ printToken lineNr)
+    <|> (ignoreSpace $ floatToken lineNr)
+    <|> (ignoreSpace $ intToken lineNr)
     <|> (ignoreSpace $ trueToken lineNr)
     <|> (ignoreSpace $ falseToken lineNr)
+    <|> (ignoreSpace $ identifierToken lineNr)
+    <|> (ignoreSpace $ leftArrowToken lineNr)
+    <|> (ignoreSpace $ rightArrowToken lineNr)
+    <|> (ignoreSpace $ questionToken lineNr)
+    <|> (ignoreSpace $ commaToken lineNr)
+    <|> (ignoreSpace $ minusMinusToken lineNr)
+    <|> (ignoreSpace $ atToken lineNr)
     <|> (stringToken lineNr)
     <|> (ignoreSpace $ leftBracketToken lineNr)
     <|> (ignoreSpace $ rightBracketToken lineNr)
-    <|> (ignoreSpace $ floatToken lineNr)
-    <|> (ignoreSpace $ intToken lineNr)
     <|> (ignoreSpace $ barBarToken lineNr)
     <|> (ignoreSpace $ andAndToken lineNr)
     <|> (ignoreSpace $ slashEqualToken lineNr)
@@ -42,20 +39,17 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ slashToken lineNr)
     <|> (ignoreSpace $ leftBraceToken lineNr)
     <|> (ignoreSpace $ rightBraceToken lineNr)
-    <|> (ignoreSpace $ leftBracketToken lineNr)
-    <|> (ignoreSpace $ rightBracketToken lineNr)
     <|> (ignoreSpace $ leftParenToken lineNr)
     <|> (ignoreSpace $ rightParenToken lineNr)
     <|> (ignoreSpace $ barToken lineNr)
     <|> (ignoreSpace $ colonToken lineNr)
+    <|> (ignoreSpace $ dotToken lineNr)
 
 
 identifierToken :: Int -> Lexer
 identifierToken line = do
-    first <- (charSatisfy isLower) <|> (glyph '_')
-    remaining <- many $ (charSatisfy isAlphaNum) <|> (glyph '_')
-    return $ Token SIdentifier line (first:remaining)
-
+    remaining <- some $ (charSatisfy isAlphaNum) <|> (glyph '_')
+    return $ Token SIdentifier line (remaining)
 
 parseGlyphToken :: Symbol -> Char -> Int -> Lexer
 parseGlyphToken sym thisGlyph line = do
@@ -66,8 +60,10 @@ colonToken :: Int -> Lexer
 colonToken = parseGlyphToken SColon ':'
 
 
+dotToken :: Int -> Lexer
+dotToken n = (parseGlyphToken SDot '.' n)
 atToken :: Int -> Lexer
-atToken = parseGlyphToken SAt '@'
+atToken n = (parseGlyphToken SAt '@' n)
 
 leftParenToken :: Int -> Lexer
 leftParenToken = parseGlyphToken SLeftParen '('

@@ -2,8 +2,7 @@
 ::
 args=<-@args
 
-::
-nArgs=<-@len args
+::nArgs=<-@len args
 
 ::
 enum f = let :: work i _ = ? i==nArgs ->

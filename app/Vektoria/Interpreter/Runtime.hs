@@ -7,6 +7,7 @@ import Vektoria.Lib.Data.Element
 import Data.Time.Clock.System
 import Data.Unique
 import Data.Char (ord)
+import Data.List.Split
 import System.Random (randomRIO)
 import System.Directory
 import System.Environment
@@ -76,8 +77,19 @@ foreignFunctions =
                  ,("args", (Nothing, IOAction argsFFI))
                  ,("len", (Nothing, Primitive lenFFI))
                  ,("ascii", (Nothing, Primitive asciiFFI))
+                 ,("split", (Nothing, Primitive splitFFI))
+                 ,("indexed", (Nothing, Primitive indexedFFI))
                  ]
 
+indexedFFI :: [Expression] -> Expression
+indexedFFI ([UnChain expr]) = indexedFFI expr
+indexedFFI exprs = Chain (map indexedToExpr $ zip [0..] exprs)
+  where indexedToExpr (i, expr) = (Chain [(Elementary (EInt i)), expr])
+
+
+splitFFI :: [Expression] -> Expression
+splitFFI [Elementary (EString pattern), Elementary (EString v)] = (Chain $ map intoElementaryString (splitOn pattern v))
+splitFFI _ = (Elementary (EError "illegal arguments"))
 asciiFFI :: [Expression] -> Expression
 asciiFFI [Elementary (EString (v:[]))] = Elementary
   $ EInt
@@ -141,8 +153,11 @@ printFFI [Elementary element] = do
 printFFI [Chain expressions] = do
  putStrLn $ showHL (Chain expressions)
  return $ Elementary EVoid
+
+printFFI [UnChain expressions] = printFFI expressions
+
 printFFI expressions = do
-  mapM (putStrLn . showElement . extractElement) expressions
+  mapM (putStrLn . showHL) expressions
   return $ Elementary EVoid
 
 probeFFI [Elementary element] = do

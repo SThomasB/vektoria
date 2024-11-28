@@ -1,0 +1,5 @@
+
+
+(@print "enter items (enter stop to stop)")
+@print "you entered:" @collectUntil (x, x=="stop") (@user)
+
