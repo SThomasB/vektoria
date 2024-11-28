@@ -1,0 +1,15 @@
+
+:: type a b c = (msg, (msg a b c))
+:: getA a b c = a
+:: getB a b c = b
+:: getC a b c = c
+:: map f t =
+  let :: a = (t getA)
+      :: b = (t getB)
+      :: c = (t getC)
+      in (type (f a) (f b) (f c))
+:: x = (type 1 2 3)
+:: print a = (@print a)
+
+(map print (map print (map (a, a*10) x)))
+

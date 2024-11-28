@@ -1,0 +1,3 @@
+::fmt it = (""+(it 0))+(". "+(it 1))
+
+(@print .(fmt .(@indexed .@args)))

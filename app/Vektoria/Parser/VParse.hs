@@ -53,11 +53,24 @@ assignStatement = do
   symbolSatisfy (== SEqual)
   modifiers <- many $ symbolSatisfy (==SLeftArrow)
   let modifier = if (length modifiers)==0 then [] else [Eager]
-  expr <- letInExpression <|> parseExpression <|> lambda
+  expr <- typeWhereExpression <|> letInExpression <|> parseExpression <|> lambda
   case map lexeme identifiers of
     (n:[]) -> return (Assign modifier n expr)
     (n:argNames) -> return (Assign modifier n (Lambda [] argNames expr))
 
+
+typeWhereExpression = do
+  ts <- many (lexeme <$> symbolSatisfy (==SIdentifier))
+  members <- some (member)
+  return $ Chain members
+
+member = do
+  symbolSatisfy (==SColon)
+  symbolSatisfy (==SRight)
+  names <- some (lexeme <$> (symbolSatisfy(==SIdentifier)))
+  case names of
+    [] -> return $ Elementary (EError "syntax error")
+    (constructor:argNames) -> return $ Call (Reference constructor) (map Reference argNames)
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
@@ -137,6 +150,7 @@ factor = letInExpression
     <|> tertiary
     <|> functionCall
     <|> foreignCall
+    <|> dottedExpr
     <|> literalExpr
     <|> parenExpr
 
@@ -164,6 +178,11 @@ parseReference = do
   reference <- fmap lexeme (symbolSatisfy (== SIdentifier))
   return $ Reference reference
 
+dottedExpr :: Parser [Token] Expression
+dottedExpr = do
+  symbolSatisfy (==SDot)
+  expr <- parseExpression
+  return $ Dotted expr
 
 foreignCall :: Parser [Token] Expression
 foreignCall = do

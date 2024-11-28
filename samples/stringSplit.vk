@@ -1,0 +1,5 @@
+
+
+:: parts=(@split "." "filename.tsx")
+@print (parts 0)+".module.css"
+

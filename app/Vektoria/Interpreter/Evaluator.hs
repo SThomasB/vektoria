@@ -92,12 +92,32 @@ evaluateCall :: Expression -> [Expression] -> Runtime Expression
 -- the call.
 evaluateCall (Reference reference) arguments = do
     entity <- evaluate (Reference reference)
-    case (entity) of
-      (Lambda closure parameters expression) -> evaluateCallable closure parameters arguments expression
-      (Elementary (EString xs)) -> evaluateStringCall xs arguments
-      (Chain xs) -> evaluateChainCall (Chain xs) arguments
-      _ -> do
-        return $ Elementary (EError "Can only call lambdas")
+    evaluateCall entity arguments
+evaluateCall (Dotted expr) arguments = do
+  expr' <- evaluate (Dotted expr)
+  evaluateCall expr' arguments
+evaluateCall (Elementary (EString xs)) arguments = evaluateStringCall xs arguments
+evaluateCall (Chain xs) arguments = evaluateChainCall (Chain xs) arguments
+evaluateCall (UnChain xs) arguments = evaluateChainCall (Chain xs) arguments
+evaluateCall (Foreign "until") arguments = until arguments
+  where
+    until (cond:[expr]) = do
+      expr' <- evaluate expr
+      cond' <- evaluate (Call cond [expr'])
+      case (extractElement cond') of
+        (EBool True) -> return cond'
+        (EBool False) -> until arguments
+        _ -> return $ Elementary (EError "until can only be used with boolean conditions")
+evaluateCall (Foreign "collectUntil") arguments = until [] arguments
+  where
+    until acc (cond:[expr]) = do
+      expr' <- evaluate expr
+      cond' <- evaluate (Call cond [expr'])
+      case (extractElement cond') of
+        (EBool True) -> return (Chain acc)
+        (EBool False) -> until (expr':acc) arguments
+        _ -> return $ Elementary (EError "until can only be used with boolean conditions")
+
 evaluateCall (Foreign reference) arguments = do
   entity <- evaluate (Foreign reference)
   case (entity) of
@@ -175,8 +195,16 @@ entity reference = do
 evaluateCallable :: [(String, Expression)]->[String]->[Expression]->Expression->Runtime Expression
 -- A call can only be resolved if the number of parameters (arity)
 -- matches the number of present arguments in the call expression.
-evaluateCallable closure [p] [(Chain arguments)] expression = do
+evaluateCallable closure [p] [(UnChain arguments)] expression = do
    Chain <$> sequence (map (\x -> evaluateCallable closure [p] [x] expression) arguments)
+evaluateCallable closure [p] [(Dotted expr)] expression = do
+  expr' <- evaluate (Dotted expr)
+  evaluateCallable closure [p] [expr'] expression
+
+evaluateCallable closure [p] [(Call x [xs])] expression = do
+  expr' <- evaluate (Call x [xs])
+  evaluateCallable closure [p] [expr'] expression
+
 
 evaluateCallable closure parameters arguments expression = do
     let arity = (length parameters)
@@ -206,6 +234,12 @@ evaluateCallable closure parameters arguments expression = do
     else return $ Lambda (zip (take argumentsLength parameters) (arguments)) (drop argumentsLength parameters) expression
 -- Evaluate expressions
 evaluate :: Expression -> Runtime Expression
+evaluate (Dotted expr) = do
+  expr' <- evaluate expr
+  case expr' of
+    (Chain xs) -> return (UnChain xs)
+    (Elementary (EString vs)) -> return $ UnChain (map (intoElementaryString . show) vs)
+    x -> return $ Elementary (EError ("no dotted instance for "++(show x) ))
 evaluate (Foreign reference) = do
   reference' <- getForeign reference
   case reference' of
@@ -227,6 +261,11 @@ evaluate (Reference reference) = do
       return result
     Nothing -> return $ Elementary (EError ("Reference error: "++reference ++ " does not exist"))
 
+evaluate (Modified reference) = do
+ expr <- evaluate (Reference reference)
+ return $ applyModification expr
+ where applyModification (Chain xs) = (UnChain xs)
+       applyModification _ = Elementary $ EError "this modfication does not exist"
 evaluate (Lambda closureId parameters arguments) = return $ Lambda closureId parameters arguments
 evaluate (Call expression args) = evaluateCall expression args
 evaluate (Elementary expr) = return (Elementary expr)
@@ -240,6 +279,7 @@ evaluate (Tertiary condition left right) = do
 -- And
 evaluate (Chain []) = return $ Chain []
 evaluate (Chain xs) = Chain <$> (sequence $ (map evaluate xs))
+evaluate (UnChain xs) = evaluate (Chain xs)
 evaluate (Binary And (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ Elementary (EBool (left && right))
 evaluate (Binary Or (Elementary (EBool left)) (Elementary (EBool right))) =
