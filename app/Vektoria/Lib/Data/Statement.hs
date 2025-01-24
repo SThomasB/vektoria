@@ -6,7 +6,7 @@ data Modifier = Eager deriving Show
 
 data Statement
     =
-    Block [Statement]
+    Dispatch [Statement]
     | Assign {modifiers::[Modifier], name::String, expression :: Expression}
     | Weak Expression
     | Reflect Expression

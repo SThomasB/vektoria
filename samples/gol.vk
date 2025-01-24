@@ -1,0 +1,64 @@
+
+
+:: init =<-[
+            [False False  False False False True True  True  True  False False False True True]
+            [False False  False False False True True  True  False True False True True  True]
+            [True  False  False False False True True  True  False True False False True False]
+            [False   False   False False False True True  True  False True False False True False]
+            [False   False   False False False True True  True  False True False False True False]
+            [False   False   False False False True True  True  False True False False True False]
+            [False   False   False False False True True  True  False True False False True False]
+            [False   False   False False False False True  True  False True False False True False]
+            [False   False   False False True True True  False False True False False True False]
+            [False   False   False False True True True  False  False True False False True False]
+            [False   False   False False False True True  True  False False False False True False]
+            [False   False   False False True False True  True  False True False False True False]
+            [False   False   False False False False False  False  False True False False True False]
+            [False   False   False False False True False  True  False True False False True False]
+            [False   False   False False False False True  False  False True False False True False]
+            [False   False   False False False True True  True  False True False False True False]
+            [False   False   False False False False True  True  False True False False True False]
+            [False   False   False False False True True  True  False True False False True False]
+            [False   False   False False False True True  False  False True False False False False]
+            [False   False   False False False False True  True  False True True True False True]
+            [False   False   False False False True True  True  False False True False False False]
+            [False   False   False False False True True  True  False True False True False False]
+            [False   False   False False False True True  True  False False False True False False]
+            [False   False   False False False True True  False False True False False False False]
+          ]
+
+          :: disp a = ((a, ? a -> (@escape "\ESC[43m \ESC[0m") | (" ")) .a)
+
+:: gameOfLife seed =
+let :: dimX =(@len (seed 0))
+    :: dimY =(@len (seed))
+    :: index row = ((@indexed .row))
+in let :: indexedSeed =((@indexed .(index .seed)))
+in let :: isNeighbour y x  = ? ( x > (dimX-1)) || (x < 0) || (y > (dimY-1)) || (y < 0) -> 0
+                             | ? ((seed y) x) -> 1 | 0
+in let ::replace rowN elem = let ::colN = ((elem 0))
+       ::isAlive = ((elem 1))
+in let ::countNeighbours = ((isNeighbour (rowN-1) (colN-1)))
+        + (isNeighbour (rowN-1) (colN))
+        + (isNeighbour (rowN-1) (colN+1))
+        + (isNeighbour (rowN) (colN-1))
+        + (isNeighbour (rowN) (colN+1))
+        + (isNeighbour (rowN+1) (colN-1))
+        + (isNeighbour (rowN+1) (colN))
+        + (isNeighbour (rowN+1) (colN+1))
+   in ? (isAlive) ->
+      ? countNeighbours < 2 -> False |
+      ? countNeighbours > 3   -> False | True
+      | ? countNeighbours == 3 -> True | False
+
+in let :: newRow row = let ::rowN  = ((row 0))
+       ::elems = ((row 1))
+   in ((a, (replace rowN a)) .elems)
+in let :: newState = (newRow .(indexedSeed))
+in let ::_= (@print .(disp .(newState)))
+       ::_= (@sleep 50000)
+       ::_= (@clearScreen)
+    in (gameOfLife newState)
+
+(gameOfLife init)
+

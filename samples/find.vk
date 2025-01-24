@@ -1,0 +1,10 @@
+
+
+
+:: args =<-@args
+:: subject =<-@file (args 1)
+:: target  =<-(args 2)
+@print .((a, @split " " a) .subject)
+
+
+

@@ -27,38 +27,59 @@ assign [] name expression = do
 
 interpreter :: Bool -> Maybe Statement -> Runtime ()
 interpreter echo stmt = case stmt of
-  Nothing -> liftIO $ putStrLn "!syntax error"
-  (Just v) -> case v of
-    (Reflect (Elementary (EString s))) -> do
-      case s of
-        "state" -> do
-          state <- get
-          liftIO $ print state
-        _ -> liftIO $ putStrLn (s ++ "is not a known reflection")
-    (Assign modifiers name expression) -> do
-      assign modifiers name expression
-    Weak expr -> do
-      case expr of
-        (Reference reference) -> do
-          maybeEntity <- getEntity reference
-          case maybeEntity of
-            Just (meta, expression) -> do
-              expression' <- evaluate expression
-              addEntity reference (meta, expression')
+  Nothing -> liftIO $ putStrLn ""
+  (Just v) -> execute v
 
-              return ()
-            Nothing -> addError ("Reference error")
-        (Call expression arguments) -> do
-              evaluate (Call expression arguments)
-              return ()
-        (Elementary (EError message)) -> addError (message)
-        _ -> if echo
-               then do
-                 expression' <- evaluate expr
-                 liftIO $ putStrLn (showHL expression')
-               else
-                 return ()
 
+-- execute (Dispatch ((Assignment m n ps):stmts)) = work n
+-- :: f (S a) = a
+--    f N = N
+--    [  (f, Dispatch [([expr], x), ])  ]
+-- (f (S 1) ) <: Call         f                          [(Call S 1)]
+--                            f                          [ Call (Member "type" "S" 1) [1] ]
+--                                                       [ Instance "S" expr ]
+--               Call (Dispatch [([Call r"S" [ a ] ], xpr)])
+--                                .-------^     .--------------------^
+--                          when calle    == MemberName
+--                          then bind args [ a ] to [ 1 ] in evaluate xpr
+--
+-- :: Option = {Some x, Nothing}
+-- :: optAdd (Some x) (Some y) = x + y
+
+execute (Weak (Elementary (EError message))) = addError (message)
+
+execute (Weak (Reference reference)) = do
+  maybeEntity <- getEntity reference
+  case maybeEntity of
+    Just (meta, expression) -> do
+      expression' <- evaluate expression
+      addEntity reference (meta, expression')
+
+      return ()
+    Nothing -> addError ("Reference error")
+
+execute (Weak (Call expression arguments)) = do
+  evaluate (Call expression arguments)
+  return ()
+
+execute (Weak expr) = do
+  echo <- getEcho
+  expression' <- evaluate expr
+  if echo
+  then liftIO $ putStrLn (showHL expression')
+  else return ()
+execute  (Assign [] name expression) = do
+  addEntity name (Nothing, expression)
+
+execute (Assign [Eager] name expression) = do
+    expression' <- evaluate expression
+    addEntity name (Nothing, expression')
+
+execute (Reflect (Elementary (EString "state"))) = do
+  state <- get
+  liftIO $ print state
+
+execute (Reflect (Elementary (EString s))) = liftIO $ putStrLn (s ++ "is not a known reflection")
 
 
 

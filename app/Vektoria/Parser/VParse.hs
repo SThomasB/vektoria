@@ -49,28 +49,38 @@ assignStatement :: Parser [Token] Statement
 assignStatement = do
   symbolSatisfy (==SColon)
   symbolSatisfy (==SColon)
-  identifiers <- some $ symbolSatisfy (== SIdentifier)
-  symbolSatisfy (== SEqual)
-  modifiers <- many $ symbolSatisfy (==SLeftArrow)
-  let modifier = if (length modifiers)==0 then [] else [Eager]
-  expr <- typeWhereExpression <|> letInExpression <|> parseExpression <|> lambda
-  case map lexeme identifiers of
-    (n:[]) -> return (Assign modifier n expr)
-    (n:argNames) -> return (Assign modifier n (Lambda [] argNames expr))
+  assignments <- some $ do
+    identifier <- lexeme <$> symbolSatisfy (== SIdentifier)
+    params <- many $ symbolSatisfy (== SIdentifier)
+    symbolSatisfy (== SEqual)
+    modifiers <- many $ symbolSatisfy (==SLeftArrow)
+    let modifier = if (length modifiers)==0 then [] else [Eager]
+    expr <- (setExpression identifier) <|> letInExpression <|> parseExpression <|> lambda
+    case map lexeme params of
+      ([]) -> return (Assign modifier identifier expr)
+      (paramNames) -> return (Assign modifier identifier (Lambda [] paramNames expr))
+  case assignments of
+    (x:[]) -> return x
+    (x:xs) -> return $ Dispatch assignments
 
 
-typeWhereExpression = do
-  ts <- many (lexeme <$> symbolSatisfy (==SIdentifier))
-  members <- some (member)
-  return $ Chain members
 
-member = do
-  symbolSatisfy (==SColon)
-  symbolSatisfy (==SRight)
-  names <- some (lexeme <$> (symbolSatisfy(==SIdentifier)))
-  case names of
-    [] -> return $ Elementary (EError "syntax error")
-    (constructor:argNames) -> return $ Call (Reference constructor) (map Reference argNames)
+setExpression s = do
+  symbolSatisfy (==SLeftBrace)
+  firstMember <- (memberOf s)
+  members <- many $ do
+    symbolSatisfy (==SComma)
+    member' <- memberOf s
+    return $ member'
+  symbolSatisfy (==SRightBrace)
+  return $ Set (firstMember:members)
+
+
+memberOf s = do
+  ids <- some $ symbolSatisfy (==SIdentifier)
+  case map lexeme ids of
+    (x:[]) -> return $ Member s x []
+    (x:xs) -> return $ Member s x xs
 
 weakStatement :: Parser [Token] Statement
 weakStatement = do
@@ -188,7 +198,9 @@ foreignCall :: Parser [Token] Expression
 foreignCall = do
     openingParen <- fmap length $ many (symbolSatisfy (==SLeftParen))
     symbolSatisfy (==SAt)
-    reference <- fmap lexeme $ symbolSatisfy (==SIdentifier)
+    reference <-   (lexeme <$> (symbolSatisfy (==SIdentifier)))
+      <|>((++) <$> (lexeme <$> symbolSatisfy (==SLeftBracket)) <*> (lexeme <$> symbolSatisfy (==SRightBracket)))
+      <|>((++) <$> (lexeme <$> symbolSatisfy (==SLeftParen)) <*> (lexeme <$> symbolSatisfy (==SRightParen)))
     expressions <- many parseExpression
     if openingParen /= 0
       then do
@@ -205,7 +217,8 @@ parseChain = do
   return $  Chain elements
 literalExpr :: Parser [Token] Expression
 literalExpr = do
-  parseChain
+  virtualChain
+  <|> parseChain
   <|> parseReference
   <|> do
     token <- symbolSatisfy (== SString)
@@ -222,6 +235,15 @@ literalExpr = do
   <|> do
     token <- symbolSatisfy (== STrue)
     return $ Elementary (EBool True)
+
+virtualChain = do
+  symbolSatisfy (==SLeftBracket)
+  from <- literalExpr
+  symbolSatisfy (==SDot)
+  symbolSatisfy (==SDot)
+  to <- literalExpr
+  symbolSatisfy (==SRightBracket)
+  return $ VirtualChain from to
 
 
 operatorSatisfy :: (Operator -> Bool) -> Parser [Token] Operator

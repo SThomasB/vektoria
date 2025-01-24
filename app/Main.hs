@@ -19,7 +19,7 @@ buildAST = map (getStatements . runParse . getTokens)
 
 
 
-runInterpreter statements = runStateT (interpret True statements) initRuntime
+runInterpreter rtEnv statements = runStateT (interpret True statements) (initRuntime rtEnv)
 
 
 
@@ -27,10 +27,10 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-      [] -> ((map safeHead) <$> buildAST <$> lexify <$> userStream) >>= runInterpreter >> putStrLn ""
+      [] -> ((map safeHead) <$> buildAST <$> lexify <$> userStream) >>= (runInterpreter $ RuntimeEnv {echo=True}) >> putStrLn ""
       ["--lex"] -> (zipWith runLex [1..] ) <$> (lines <$> getContents) >>= (mapM_ print)
       ["--ast"] -> buildAST <$> lexify <$> userStream >>= (mapM_ print)
-      ["--de", prg] -> ((map safeHead) <$> buildAST <$> (pure $ lexify (lines prg))) >>=(\s -> runStateT (interpret True s) initRuntime) >> putStrLn ""
+      ["--de", prg] -> ((map safeHead) <$> buildAST <$> (pure $ lexify (lines prg))) >>=(\s -> runStateT (interpret True s) (initRuntime $ RuntimeEnv {echo=False})) >> putStrLn ""
       (filePath:_)-> do interpretFile filePath
       _ -> putStrLn "Invalid arguments."
 
@@ -54,7 +54,7 @@ interpretFile filePath = do
       if isValidAst
         then do
           let statementStream = concat (map fst ast)
-          (_, finalState) <- runStateT (interpret False (map toMaybe statementStream)) initRuntime
+          (_, finalState) <- runStateT (interpret False (map toMaybe statementStream)) (initRuntime $ RuntimeEnv {echo=False})
           --putStrLn ""
           --putStrLn "Accrued errors:"
           --mapM print (zip [1..] (errors finalState))
