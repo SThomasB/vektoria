@@ -1,0 +1,29 @@
+
+
+
+::ABRA=<-".abra"
+::args=<-@args
+
+
+::program=<-(args 1)
+
+
+::run = ? program == "open"  -> open
+        |
+        ? program == "go"    -> go
+        |
+        ? program == "close" -> close
+        |
+       @()
+
+:: content =<- ? (@isFile ABRA) -> (@file ABRA)
+               | ""
+
+:: open = (@write ABRA content + (args 2) + "," + (@directory)+";")
+
+:: go = (@print content)
+
+run
+
+
+

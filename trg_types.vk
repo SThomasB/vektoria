@@ -1,0 +1,10 @@
+
+
+
+:: Option = { Some x, Nothing }
+
+:: f (Some x)  = x
+   f Nothing = Nothing
+   f [] =
+
+

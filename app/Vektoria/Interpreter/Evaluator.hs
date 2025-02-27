@@ -1,4 +1,5 @@
 
+
 module Vektoria.Interpreter.Evaluator (evaluate, dereference) where
 import Vektoria.Lib.Data.Expression
 import Vektoria.Interpreter.Runtime
@@ -6,6 +7,7 @@ import Vektoria.Lib.Data.Entity
 import Vektoria.Lib.Data.Element
 import Control.Monad
 import Data.Unique
+import Data.List (repeat)
 import qualified Data.Text as T
 
 -- pack converts string to text (not lazy)
@@ -18,10 +20,8 @@ evalError op e1 e2 =
 
 evalOpposite :: Operator -> Operator -> Expression -> Expression -> Runtime Expression
 evalOpposite op opposite (Elementary left) (Elementary right) = do
-  result <- evaluate (Binary opposite (Elementary left) (Elementary right))
-  case result of
-    (Elementary (EBool b)) -> return $ Elementary (EBool (not b))
-    _ -> (evalError op left right)
+  evaluate (Binary opposite (Elementary right) (Elementary left))
+
 
 dereference :: Expression -> Runtime Expression
 dereference (Reference r) = do
@@ -115,9 +115,10 @@ evaluateCall (Foreign "collectUntil") arguments = until [] arguments
       cond' <- evaluate (Call cond [expr'])
       case (extractElement cond') of
         (EBool True) -> return (Chain acc)
-        (EBool False) -> until (expr':acc) arguments
+        (EBool False) -> until (acc++[expr']) arguments
         _ -> return $ Elementary (EError "until can only be used with boolean conditions")
-
+evaluateCall (Foreign "()") ([]) = return $ Elementary EVoid
+evaluateCall (Foreign "()") (x:xs) = evaluate (Call x xs)
 evaluateCall (Foreign reference) arguments = do
   entity <- evaluate (Foreign reference)
   case (entity) of
@@ -150,6 +151,7 @@ evaluateCall (Call expression arguments) outerArguments = do
   evaluateCall callee outerArguments
 evaluateCall expression arguments = do
   return $ Elementary (EError "Cant handle this case")
+
 
 resolve :: [String] -> Expression -> Runtime Expression
 
@@ -197,6 +199,7 @@ evaluateCallable :: [(String, Expression)]->[String]->[Expression]->Expression->
 -- matches the number of present arguments in the call expression.
 evaluateCallable closure [p] [(UnChain arguments)] expression = do
    Chain <$> sequence (map (\x -> evaluateCallable closure [p] [x] expression) arguments)
+
 evaluateCallable closure [p] [(Dotted expr)] expression = do
   expr' <- evaluate (Dotted expr)
   evaluateCallable closure [p] [expr'] expression
@@ -277,8 +280,19 @@ evaluate (Tertiary condition left right) = do
     _ -> return $ Elementary (EError "Expected boolean in ternary condition")
 -- comparisons
 -- And
+evaluate (Producer f (Chain xs) x) = do
+  production <- evaluate (Call f [x])
+  case production of
+    (Elementary EVoid) -> return (Chain xs)
+    _ -> evaluate (Producer f (Chain $ xs++[production]) production)
 evaluate (Chain []) = return $ Chain []
 evaluate (Chain xs) = Chain <$> (sequence $ (map evaluate xs))
+evaluate (VirtualChain (Elementary (EInt from)) (Elementary (EInt to))) =
+  return $ Chain $ map intoElementaryInt [from..to]
+evaluate (VirtualChain from to) = do
+  from' <- evaluate from
+  to' <- evaluate to
+  evaluate (VirtualChain from' to')
 evaluate (UnChain xs) = evaluate (Chain xs)
 evaluate (Binary And (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ Elementary (EBool (left && right))
@@ -294,8 +308,12 @@ evaluate (Binary Equals (Elementary (EString left)) (Elementary (EString right))
 evaluate (Binary Equals (Elementary (EBool left)) (Elementary (EBool right))) =
   return $ Elementary (EBool (left == right))
 -- NotEquals
-evaluate (Binary NotEquals (Elementary left) (Elementary right)) =
-  evalOpposite NotEquals Equals (Elementary left) (Elementary right)
+evaluate (Binary NotEquals (Elementary left) (Elementary right)) = do
+  result <- evaluate (Binary Equals (Elementary left) (Elementary right))
+  case result of
+   (Elementary (EBool True)) -> return (Elementary (EBool False))
+   (Elementary (EBool False)) -> return (Elementary (EBool True))
+   _ -> return (Elementary (EError "Invalid comparison"))
 -- Greater
 evaluate (Binary Greater (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ Elementary (EBool (left > right))
@@ -323,6 +341,19 @@ evaluate (Binary SubSet (Elementary (EFloat left)) (Elementary (EFloat right))) 
 evaluate (Binary SubSet (Elementary (EString left)) (Elementary (EString right))) =
   return $ Elementary (EBool (isSubstring left right))
 -- Multiply
+evaluate (Binary Multiply (VirtualChain fromA toA) (VirtualChain fromB toB)) = do
+  (Elementary (EInt fromA')) <- evaluate fromA
+  (Elementary (EInt toA')) <- evaluate toA
+  (Elementary (EInt fromB')) <- evaluate fromB
+  (Elementary (EInt toB')) <- evaluate toA
+  return $ Chain ([Chain ([(Elementary (EInt $ a*b)) | a<- [fromA' .. toA']]) | b<-[fromB'..toB']])
+evaluate (Binary Multiply (Chain xs) (Chain ys)) = do
+  nestedChains <- mapM (\y -> do
+                          innerChains <- mapM (\x -> evaluate (Binary Multiply x y)) xs
+                          return $ Chain innerChains
+                       ) ys
+  return $ Chain nestedChains
+
 evaluate (Binary Multiply (Elementary (EInt left)) (Elementary (EInt right))) =
   return $ Elementary (EInt (left * right))
 evaluate (Binary Multiply (Elementary (EFloat left)) (Elementary (EInt right))) =
@@ -331,6 +362,8 @@ evaluate (Binary Multiply (Elementary (EInt left)) (Elementary (EFloat right))) 
   return $ Elementary (EFloat ((fromIntegral left) * right))
 evaluate (Binary Multiply (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $ Elementary (EFloat (left * right))
+evaluate (Binary Multiply (Elementary (EString s)) (Elementary (EInt v))) =
+  return $ Elementary (EString $ concat $ take v $ repeat s)
 -- Divide
 evaluate (Binary Divide (Elementary (EFloat left)) (Elementary (EFloat right))) =
   return $  Elementary (EFloat (left / right))

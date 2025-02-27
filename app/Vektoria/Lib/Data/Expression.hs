@@ -7,8 +7,13 @@ import Data.List
 
 data Expression
   = Elementary { element :: Element }
+  | Member {memberSetName :: String, memberName :: String, fieldNames :: [String]}
+  | Set {expressions :: [Expression]}
+  | Instance {memberName :: String, fields :: [Expression]}
+  | Producer {function :: Expression, produced :: Expression, produce :: Expression}
   | Chain { expressions :: [Expression] }
   | UnChain { expressions :: [Expression] }
+  | VirtualChain { from :: Expression, to :: Expression}
   | Dotted { dotted :: Expression}
   | Reference { reference :: String }
   | Foreign { reference :: String}
@@ -19,7 +24,6 @@ data Expression
   | Call { function :: Expression, arguments :: [Expression] }
   | IOAction { action :: ([Expression] ->  IO Expression) }
   | Primitive{ func :: ([Expression] -> Expression) }
-
 
 
 instance Show Expression where
@@ -37,6 +41,10 @@ instance Show Expression where
   show (IOAction _) = "<:IO"
   show (Foreign reference) = "Foreign "++ reference
   show (Modified reference) = "<:Modified " ++ reference
+  show (Member s m ps) = "<:" ++ s ++ ", " ++ m++" " ++ (show ps)
+  show (Set expressions) = "<:" ++ "Set" ++ " " ++(show expressions)
+  show (Producer f p n) = "<:Produce" ++ (show f) ++ (show p) ++ (show n)
+  show (VirtualChain from to) = (show from) ++ ".."++(show to)
 
 showHL (Elementary element) = showElement element
 showHL (Chain expr) = "[" ++ ((concat . (intersperse " ")) (map showChain expr)) ++"]"
