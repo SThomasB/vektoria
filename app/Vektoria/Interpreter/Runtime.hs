@@ -14,6 +14,9 @@ import System.Directory
 import System.Environment
 import System.IO (withFile, IOMode(ReadMode), hGetContents, hFlush, stdout)
 import Control.Concurrent (threadDelay)
+import Graphics.Rendering.Chart.Easy
+import Graphics.Rendering.Chart.Backend.Cairo
+import System.Process (callCommand)
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
 type Entity = (Maybe Metadata, Expression)
@@ -100,7 +103,20 @@ foreignFunctions =
                  ,("clearScreen", (Nothing, IOAction clearScreenFFI))
                  ,("sleep", (Nothing, IOAction sleepFFI))
                  ,("escape", (Nothing, IOAction escapeFFI))
+                 ,("plot", (Nothing, IOAction plotFFI))
                  ]
+toCoordinates :: [Expression] -> Maybe [[(Float, Float)]]
+toCoordinates xs = accumulate [] xs
+  where
+    accumulate acc [] = fmap (\x -> [x]) $ sequence acc
+    accumulate acc ((Chain maybeChain):xs) = accumulate ((toCoordinate maybeChain):acc) xs
+    accumulate acc _  = Nothing
+    toCoordinate [] = Nothing
+    toCoordinate [(Elementary (EInt x)), (Elementary (EInt y))] = Just (fromIntegral x, fromIntegral y)
+    toCoordinate [(Elementary (EInt x)), (Elementary (EFloat y))] = Just (fromIntegral x, y)
+    toCoordinate [(Elementary (EFloat x)), (Elementary (EInt y))] = Just (x, fromIntegral y)
+    toCoordinate [(Elementary (EFloat x)), (Elementary (EFloat y))] = Just (x, y)
+    toCoordinate _ = Nothing
 interpretEscapes :: String -> String
 interpretEscapes "" = ""
 interpretEscapes ('\\':rest) =
@@ -117,7 +133,17 @@ escapeFFI [Elementary (EString s)] = do
   let s' = interpretEscapes s
   return $ Elementary (EString s')
 
+plotFFI [Chain (xs)] = do 
+  let (Just coords) = toCoordinates xs
+  let filename = "vk_tmp_plot.png"
+  toFile def filename $ do
+    layout_title .= "Plot"
+    setColors [opaque blue]
+    plot (line "f(x)" coords)
+  callCommand $ "open " ++ filename
+  return $ Elementary EVoid
 
+plotFFI _ = return $ Elementary (EError "Invalid plot command")
 sleepFFI [(Elementary (EInt x))]= do
   threadDelay (x)
   return $ Elementary EVoid

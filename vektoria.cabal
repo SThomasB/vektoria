@@ -46,7 +46,10 @@ executable vektoria
                     , time
                     , split
                     , text
+                    , process
                     , unordered-containers
                     , mtl
+                    , Chart
+                    , Chart-cairo
     hs-source-dirs:   app
     default-language: Haskell2010
