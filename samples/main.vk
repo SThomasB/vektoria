@@ -1,0 +1,28 @@
+
+
+
+:: a b c = b + c
+:: b =<- let ::x = 10 in ((a 10) (10+x))
+:: c a = ? a > 10 -> a | (c a + 1)
+:: d =<- (c 0)
+<> state
+(@print "false || true " False || True
+  "hello"=="hello"
+  10 + 20
+  10.0 + 20.0
+  10/2
+  10.0/2.5
+  10/0
+  10.0/0.0
+  10 + (a 10 20)
+
+  ? (a, a) -> 10 | 11
+  [1 2 3]
+)
+
+:: Person a b = (q, (q a b))
+:: p = (Person "a" "b")
+:: name a b = a
+:: age a b  = b
+@print (p name)
+       (p age)
