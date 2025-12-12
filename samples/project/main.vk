@@ -1,25 +1,22 @@
 
 
 
-:: do a b f = let ::iter i acc = ? i == b -> acc | (iter (i+1) (f i acc))
-              in (iter a 0)
+---------------------
 
+:: Pair fst snd = (q, (q fst snd))
+:: End = (q, q)
+:: list =<-(Pair "Yo" (Pair "Hello" (Pair "There" End)))
+:: fst a b = a
+:: snd a b =  b
 
-:: program = 
-(do 0 1000000 (i acc,
-    i + acc
-))
+:: last l = let ::cont =<- (l snd)
+            in ? (cont~End) -> (l fst) | (last cont)
 
-
-:: String a = (, a)
-:: Num a = (, a)
-:: Person name age = (q, (q name age))
-
-:: person = (Person "Thomas" 10)
-:: name a b =(String a)
-:: age  a b =(Num b)
-
-
-(@print (person age))
-
-
+:: at n l = let :: work i rs = ? n == i -> (rs fst)
+                 | (work i+1 (rs snd))
+            in (work 0 l)
+    
+(@print "LIST INDEXED AT 0" (at 0 list))
+(@print "LIST INDEXED AT 1" (at 1 list))
+(@print "LIST INDEXED AT 2" (at 2 list))
+(@print "LAST OF LIST BY MATCH" (last list))
