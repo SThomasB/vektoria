@@ -1,0 +1,25 @@
+
+
+
+:: do a b f = let ::iter i acc = ? i == b -> acc | (iter (i+1) (f i acc))
+              in (iter a 0)
+
+
+:: program = 
+(do 0 1000000 (i acc,
+    i + acc
+))
+
+
+:: String a = (, a)
+:: Num a = (, a)
+:: Person name age = (q, (q name age))
+
+:: person = (Person "Thomas" 10)
+:: name a b =(String a)
+:: age  a b =(Num b)
+
+
+(@print (person age))
+
+

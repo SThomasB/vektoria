@@ -1,10 +1,21 @@
 
-:: tup a b = (msg, (msg a b))
-:: first t = (t (a b, a))
-:: snd   t = (t (a b, b))
-:: fm f st = (s, let :: s_ = (st s) in let :: x_ = (f (first s_)) in (tup x_ s_))
-:: incr = (s, (tup s s+1))
-:: init =<-(s, (tup s s))
+::pair a b = (q, (q a b))
+::fst a b = a
+::snd a b = b
+::s f = (q, (q f))
+::un f = f 
+::app sa x = ((un sa) x)
+::fmap t sa = (s 
+                (x, let ::state = ((un sa) x) 
+                    in let :: a = (state fst)
+                           :: b = (state snd)
+                    in (pair (t a) b)
+                ))
+-- State (s, pair x s)
 
-@print (snd (incr 0))
+:: init = (st, (pair 0 0))
 
+:: add a = a  + 10
+
+:: result =<- ((fmap add (s init)) (pair 0 0))
+@print result

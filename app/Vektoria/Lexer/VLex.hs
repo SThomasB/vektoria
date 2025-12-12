@@ -44,7 +44,11 @@ vektoriaLex lineNr = do
     <|> (ignoreSpace $ barToken lineNr)
     <|> (ignoreSpace $ colonToken lineNr)
     <|> (ignoreSpace $ dotToken lineNr)
+    <|> (ignoreSpace $ tildeToken lineNr)
 
+
+tildeToken :: Int -> Lexer
+tildeToken =  parseGlyphToken STilde '~'
 
 identifierToken :: Int -> Lexer
 identifierToken line = do

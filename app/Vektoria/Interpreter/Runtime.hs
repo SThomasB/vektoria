@@ -3,7 +3,6 @@ module Vektoria.Interpreter.Runtime (module Vektoria.Interpreter.Runtime,
 import Control.Monad.State
 import qualified Data.HashMap.Strict as HashMap
 import Vektoria.Lib.Data.Expression
-import Vektoria.Lib.Data.Element
 import Data.Time.Clock.System
 import Data.Unique
 import Data.Char (ord)
@@ -14,12 +13,10 @@ import System.Directory
 import System.Environment
 import System.IO (withFile, IOMode(ReadMode), hGetContents, hFlush, stdout)
 import Control.Concurrent (threadDelay)
-import Graphics.Rendering.Chart.Easy
-import Graphics.Rendering.Chart.Backend.Cairo
 import System.Process (callCommand)
 type Runtime a = StateT RuntimeState IO a
 type Scope = HashMap.HashMap String Entity
-type Entity = (Maybe Metadata, Expression)
+type Entity = Expression
 
 data Metadata = Metadata {
     typeSignature :: Maybe String
@@ -40,8 +37,16 @@ data RuntimeState = RuntimeState
   , errors :: [RuntimeError]
   , env :: RuntimeEnv
   }
+
 instance Show RuntimeState where
   show s = (show (scope s ))
+
+entity :: String -> Runtime Expression
+entity reference = do
+  maybeEntity <- getEntity reference
+  case maybeEntity of
+    Just thing -> return thing
+    Nothing -> return $ Elementary (EError (reference ++ " does not exist"))
 
 initRuntime :: RuntimeEnv -> RuntimeState
 initRuntime rte = RuntimeState {scope=initScope, ffi=initFFI, errors=[], env=rte}
@@ -60,14 +65,14 @@ getEcho = do
   rte <- gets env
   return $ echo rte
 
-addEntity :: String -> (Maybe Metadata, Expression) -> Runtime ()
-addEntity name (metadata, expression) = modify $ \s -> s { scope = HashMap.insert name (metadata, expression) (scope s) }
+addEntity :: String -> Entity -> Runtime ()
+addEntity name expression = modify $ \s -> s { scope = HashMap.insert name expression (scope s) }
 
 addError :: String -> Runtime ()
 addError message = modify $ \s -> s { errors = (errors s) ++ [RuntimeError message] }
 
 initScope, initFFI :: Scope
-initScope = HashMap.fromList [("Write", (Nothing, Member "FileMode" "Write" ["n"]))]
+initScope = HashMap.fromList []
 initFFI = HashMap.fromList foreignFunctions
 
 named :: Scope -> String -> (Maybe Entity)
@@ -80,36 +85,27 @@ newScope state newEntities =
 
 foreignFunctions :: [(String, Entity)]
 foreignFunctions =
-                 [("print", (Nothing, IOAction printFFI))
-                 ,("probe", (Nothing, IOAction probeFFI))
-                 ,("user" , (Nothing, IOAction getInputFFI))
-                 ,("userInt", (Nothing, IOAction getIntFFI))
-                 ,("cpuTime", (Nothing, IOAction cpuTimeFFI))
-                 ,("file", (Nothing, IOAction fileFFI))
-                 ,("isFile", (Nothing, IOAction isFileFFI))
-                 ,("randInt", (Nothing, IOAction randIntFFI))
-                 ,("folder", (Nothing, IOAction folderFFI))
-                 ,("args", (Nothing, IOAction argsFFI))
-                 ,("len", (Nothing, Primitive lenFFI))
-                 ,("ascii", (Nothing, Primitive asciiFFI))
-                 ,("split", (Nothing, Primitive splitFFI))
-                 ,("indexed", (Nothing, Primitive indexedFFI))
-                 ,("count", (Nothing, Primitive countFFI))
-                 ,("write", (Nothing, IOAction writeFFI))
-                 ,("[]", (Nothing, Primitive listFFI))
-                 ,("directory", (Nothing, IOAction directoryFFI))
-                 ,("producer", (Nothing, Primitive producerFFI))
-                 ,("toString", (Nothing, Primitive toStringFFI))
-                 ,("clearScreen", (Nothing, IOAction clearScreenFFI))
-                 ,("sleep", (Nothing, IOAction sleepFFI))
-                 ,("escape", (Nothing, IOAction escapeFFI))
-                 ,("plot", (Nothing, IOAction plotFFI))
+                 [("print", IOAction printFFI)
+                 ,("probe", IOAction probeFFI)
+                 ,("user" , IOAction getInputFFI)
+                 ,("userInt", IOAction getIntFFI)
+                 ,("cpuTime", IOAction cpuTimeFFI)
+                 ,("file", IOAction fileFFI)
+                 ,("isFile", IOAction isFileFFI)
+                 ,("randInt", IOAction randIntFFI)
+                 ,("len", Primitive lenFFI)
+                 ,("ascii", Primitive asciiFFI)
+                 ,("write", IOAction writeFFI)
+                 ,("directory", IOAction directoryFFI)
+                 ,("toString", Primitive toStringFFI)
+                 ,("clearScreen", IOAction clearScreenFFI)
+                 ,("sleep", IOAction sleepFFI)
+                 ,("escape", IOAction escapeFFI)
                  ]
 toCoordinates :: [Expression] -> Maybe [[(Float, Float)]]
 toCoordinates xs = accumulate [] xs
   where
     accumulate acc [] = fmap (\x -> [x]) $ sequence acc
-    accumulate acc ((Chain maybeChain):xs) = accumulate ((toCoordinate maybeChain):acc) xs
     accumulate acc _  = Nothing
     toCoordinate [] = Nothing
     toCoordinate [(Elementary (EInt x)), (Elementary (EInt y))] = Just (fromIntegral x, fromIntegral y)
@@ -133,38 +129,15 @@ escapeFFI [Elementary (EString s)] = do
   let s' = interpretEscapes s
   return $ Elementary (EString s')
 
-plotFFI [Chain (xs)] = do 
-  let (Just coords) = toCoordinates xs
-  let filename = "vk_tmp_plot.png"
-  toFile def filename $ do
-    layout_title .= "Plot"
-    setColors [opaque blue]
-    plot (line "f(x)" coords)
-  callCommand $ "open " ++ filename
-  return $ Elementary EVoid
-
-plotFFI _ = return $ Elementary (EError "Invalid plot command")
 sleepFFI [(Elementary (EInt x))]= do
   threadDelay (x)
   return $ Elementary EVoid
 sleepFFI _= return $ Elementary (EError "sleep is missing an argument")
 toStringFFI [x] = Elementary (EString $ showHL x)
-producerFFI (f:[p]) = Producer f (Chain []) p
-listFFI :: [Expression] -> Expression
-listFFI xs = Chain xs
-countFFI :: [Expression] -> Expression
-countFFI ((Elementary (EInt start)):[(Elementary (EInt stop))]) = Chain $ map intoElementaryInt [start..stop]
-indexedFFI :: [Expression] -> Expression
-indexedFFI ([UnChain expr]) = indexedFFI expr
-indexedFFI exprs = Chain (map indexedToExpr $ zip [0..] exprs)
-  where indexedToExpr (i, expr) = (Chain [(Elementary (EInt i)), expr])
 
 isFileFFI [(Elementary (EString name))] = do
   exists <- doesFileExist name
   return $ Elementary (EBool exists)
-splitFFI :: [Expression] -> Expression
-splitFFI [Elementary (EString pattern), Elementary (EString v)] = (Chain $ map intoElementaryString (splitOn pattern v))
-splitFFI _ = (Elementary (EError "illegal arguments"))
 asciiFFI :: [Expression] -> Expression
 asciiFFI [Elementary (EString (v:[]))] = Elementary
   $ EInt
@@ -174,10 +147,6 @@ asciiFFI _ = Elementary
   $ EError
   $ "ascii is only defined for single characters"
 lenFFI :: [Expression] -> Expression
-lenFFI [Chain (expressions)] = Elementary
-  $ EInt
-  $ length
-  $ expressions
 lenFFI [(Elementary (EString v))] = Elementary
  $ EInt
  $ length
@@ -185,20 +154,9 @@ lenFFI [(Elementary (EString v))] = Elementary
 
 lenFFI _ = Elementary $ (EError "len is only defined for chains")
 
-argsFFI [] = do
-  args <- getArgs
-  return $ Chain (map intoElementaryString args)
 
 argsFFI _ = return $ Elementary $ (EError "illegal argument for @args")
 
-folderFFI :: [Expression] -> IO Expression
-folderFFI [] = do
-    paths <- getDirectoryContents "."
-    return $ Chain (map intoElementaryString paths)
-folderFFI [Elementary (EString path)] = do
-    paths <- getDirectoryContents path
-    return $ Chain (map intoElementaryString paths)
-folderFFI _ = return $ Elementary $ (EError "illegal argument for @folder")
 directoryFFI [] = do
   path <- getCurrentDirectory
   return $ intoElementaryString path
@@ -241,14 +199,10 @@ writeFFI ((Elementary (EString fn)):content) = do
 printFFI [] = do
   putStrLn ""
   return $ Elementary EVoid
+
 printFFI [Elementary element] = do
   putStrLn $ showElement element
   return $ Elementary EVoid
-printFFI [Chain expressions] = do
- putStrLn $ showHL (Chain expressions)
- return $ Elementary EVoid
-
-printFFI [UnChain expressions] = printFFI expressions
 
 printFFI expressions = do
   mapM (putStrLn . showHL) expressions
@@ -301,7 +255,6 @@ fmtVexpr [] = ""
 fmtVexpr (x:xs) = work (fmt x) xs
   where work acc [] = acc
         work acc (x:xs) = work (acc <> (fmt x)) xs
-        fmt (UnChain xs) = intercalate "\n" (map showHL xs)
         fmt x = showHL x
 
 

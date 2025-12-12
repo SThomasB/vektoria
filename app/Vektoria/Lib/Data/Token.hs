@@ -47,6 +47,7 @@ data Symbol
   | SInt
   | SFloat
   | SString
+  | STilde
   deriving (Show, Eq, Enum)
 
 match :: Symbol -> Token -> Bool

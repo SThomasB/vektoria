@@ -3,29 +3,10 @@
 module Vektoria.Interpreter.Evaluator (evaluate) where
 import Vektoria.Lib.Data.Expression
 import Vektoria.Interpreter.Runtime
-import Vektoria.Lib.Data.Entity
-import Vektoria.Lib.Data.Element
 import Control.Monad
 import Data.Unique
 import Data.List (repeat)
 import qualified Data.Text as T
--- Resolve references, and evaluate arguments before binding them to
--- corresponding parameters.
-createBindings parameters arguments = do
-  let bindings = zip parameters arguments
-  maybeResults <- mapM evaluateBinding bindings
-  return (sequence maybeResults)
-  where
-    evaluateBinding (parameter, argument) = do
-      expression <- evaluate argument
-      case expression of
-        Elementary (EError message) -> do
-          addError ("Error evaluating arguments "++message)
-          return Nothing
-        expression -> return $ Just (parameter, (Nothing, expression))
-
-
-
 
 resolve :: [String] -> Expression -> Runtime Expression
 
@@ -37,14 +18,13 @@ resolve protected (Reference reference) = do
 resolve  protected (Call callee arguments) = do
   callee' <- resolve protected callee
   arguments' <- mapM (resolve protected) arguments
-  return $ Call callee arguments'
+  return $ Call callee' arguments'
 
-
-resolve  protected (Tertiary condition left right) = do
+resolve  protected (Ternary condition left right) = do
   condition' <- resolve protected condition
   left' <- resolve protected left
   right' <- resolve protected right
-  return $ Tertiary condition left right
+  return $ Ternary condition' left' right'
 
 
 resolve  protected (Binary op left right) = do
@@ -52,39 +32,32 @@ resolve  protected (Binary op left right) = do
   right' <- resolve protected right
   return $ Binary op left' right'
 
-resolve protected (Lambda closureId parameters expression) = do
-  resolve parameters expression
+resolve protected (Elementary (Lambda n closure parameters expression)) = do
+  expression' <- resolve parameters expression
+  ret $ Lambda n closure parameters expression
 
 resolve  _ (expression) = return expression
-
-
-entity :: String -> Runtime Expression
-entity reference = do
-  maybeEntity <- getEntity reference
-  case maybeEntity of
-    Just (_, thing) -> return thing
-    Nothing -> return $ Elementary (EError (reference ++ " does not exist"))
-
 
 
 ret :: Element -> Runtime Expression
 ret value = return $ Elementary value
 
+
+toElement :: Expression -> Element
+toElement (Elementary element) = element
+toElement expression = EProxy expression
 evaluate :: Expression -> Runtime Expression
 -- Elementary: Vektoria expressions a
 --  simply returns the expression as is
 evaluate elementary@(Elementary _) = return elementary
 
--- Lambda: Vektoria expressions (a, x)
--- simply returns the expression as is
-evaluate lambda@(Lambda _ _ _)     = return lambda
 -- Binary: Vektoria expressions a `op` b
 --  evaluates a then 
 --  evaluates b then 
 --  evaluates the operator
 evaluate binaryExpr@(Binary op x y)   = do 
-  (Elementary a') <- evaluate x
-  (Elementary b') <- evaluate y
+  a' <- toElement <$> evaluate x
+  b' <- toElement <$> evaluate y
   case (op, a', b') of
     -- And: Vektoria expressions a && b
     (And, EBool a, EBool b)        -> ret $ EBool (a && b)
@@ -155,29 +128,31 @@ evaluate binaryExpr@(Binary op x y)   = do
     (SubSet, _, _)               -> ret $ EError
                                         $ "Type mismatch in a <= b; " 
                                            <> (show binaryExpr)
-    _ -> ret $ EError "Operator not supported"
+    (Tilde, Lambda name _ _ _, Lambda name' _ _ _) -> ret $ EBool (name == name')
+    _ -> ret $ EError $ "Operator not supported " <> show a' <> " " <> (show op) <> " " <> show b'
 
 -- Call: Vektoria expressions (x a b c ..)
 evaluate call@(Call x' arguments) = do
   x <- evaluate x'
   case x of
     -- Callee evaluates to a lambda
-    (Lambda closure parameters expression) 
+    (Elementary (Lambda n closure parameters expression)) 
       -- Check if the number of parameters expected
       -- by the lambda expression is the same as 
       -- the number of supplied arguments.
       | arity == numSuppliedArgs -> do
         evaluatedArgs <- mapM evaluate arguments
         let newBindings = (parameters `zip` evaluatedArgs) :: [(String, Expression)]
-        let bindings = map (\(x, y) -> (x, (Nothing, y))) (newBindings ++ closure)
+        let bindings = (newBindings ++ closure)
         preCallScope <- get
         put $ newScope preCallScope bindings
         result <- evaluate expression
         result' <- do
           case result of
-            (Lambda maybeId parameters expression) -> do
+            (Elementary (Lambda nn closure parameters expression)) -> do
               expression' <- resolve parameters expression
-              return $ Lambda maybeId parameters expression'
+              ret $ Lambda (if nn=="" then n else nn) closure parameters expression'
+
             _ -> return result
         put preCallScope
         return result'
@@ -185,9 +160,12 @@ evaluate call@(Call x' arguments) = do
         -- Partial lambda application case
         let (paramsToBindNow, paramsToBindLater) = splitAt numSuppliedArgs parameters
             boundParams = paramsToBindNow `zip` arguments
-        in return $ Lambda boundParams paramsToBindLater expression
+        in ret $ Lambda n boundParams paramsToBindLater expression
       where arity           = length parameters
             numSuppliedArgs = length arguments
+            name            = case x' of
+              (Reference r) -> r
+              _ -> ""
 
     -- IOAction: Vektoria expressions @name x y z..
     -- where name is linked to an IO action in the Runtime
@@ -211,7 +189,7 @@ evaluate call@(Call x' arguments) = do
 evaluate ref@(Foreign reference) = do
   reference' <- getForeign reference
   case reference' of
-    Just (_, function) -> return function
+    Just function -> return function
     Nothing -> ret $ EError $ "Reference error; " <> (show ref)
 
 -- Reference: Vektoria expressions a
@@ -219,14 +197,13 @@ evaluate ref@(Foreign reference) = do
 evaluate (Reference reference) = do
   entity <- getEntity reference
   case entity of
-    Just (_, expression) -> do
+    Just expression -> do
       result <- evaluate expression
-      addEntity reference (Nothing, result)
       return result
     Nothing -> ret $ EError $ "Not found: " <> reference
 
 
-evaluate ternary@(Tertiary condition' left right) = do
+evaluate ternary@(Ternary condition' left right) = do
   condition <- evaluate condition'
   case condition of
     Elementary (EBool True)  -> evaluate left
